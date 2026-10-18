@@ -728,7 +728,7 @@ function renderStreaks(){
   if(!S.combos[sel]||st.stkTol||st.stkGap)$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
   streakCombo(S,sel).then(R=>{
     if(st.D.date!==date||st.stkSel!==sel||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙이 바뀜
-    if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (기본 조합·전체 체크 + 규칙 0·0 은 휴대폰에서도 볼 수 있습니다)</div>';return}
+    if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (사모·연기금·투신으로 만든 조합과 전체 체크는, 규칙 0·0 이면 휴대폰에서도 바로 볼 수 있습니다)</div>';return}
     const C=R.combos[sel],tk=R.tk,n=st.listN;
     const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${title} 상위${rows.length}</h3></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 순매수<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
