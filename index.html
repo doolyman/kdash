@@ -701,32 +701,39 @@ $("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||100,5
 /* 연속 순매수: 체크한 주체 순매수 합계가 연속 플러스인 종목.
    기본 조합·전부 체크는 파일에 미리 계산돼 있고, 그 밖의 조합은 로컬 실행기(open_dashboard.bat)에 물어봄 */
 const stkCache={};
+/* 연속 규칙: tol = 하루 순매도가 시총 대비 tol% 이내면 끊지 않음, gap = 그보다 큰 순매도일도 gap일까지 건너뜀 (둘 다 0 = 순매수 아닌 날 바로 끊김) */
+st.stkTol=+store.get("stkTol",0)||0;st.stkGap=+store.get("stkGap",0)||0;
 async function streakCombo(S,sel){
-  if(S.combos[sel])return S;
-  const key=st.D.date+"|"+sel;if(stkCache[key])return stkCache[key];
+  const plain=!st.stkTol&&!st.stkGap;
+  if(plain&&S.combos[sel])return S;
+  const key=`${st.D.date}|${sel}|${st.stkTol}|${st.stkGap}`;if(stkCache[key])return stkCache[key];
   if(!location.protocol.startsWith("http"))return null;
-  try{const r=await fetch(`/api/streaks?date=${st.D.date}&sel=${sel}`);if(!r.ok)return null;return stkCache[key]=await r.json()}catch(e){return null}
+  try{const r=await fetch(`/api/streaks?date=${st.D.date}&sel=${sel}&tol=${st.stkTol}&gap=${st.stkGap}`);if(!r.ok)return null;return stkCache[key]=await r.json()}catch(e){return null}
 }
 function renderStreaks(){
   const S=st.D.streaks;
   if(!S||!S.combos||S.parts.length!==7){$("#stkParts").innerHTML="";$("#streaks").innerHTML='<div class="empty">데이터 갱신(다시 계산) 후 나타납니다.</div>';return}
   if(!st.stkSel||st.stkSel.length!==S.parts.length)st.stkSel=store.get("stkSel_v2",S.default);
   if(st.stkSel.length!==S.parts.length)st.stkSel=S.default;
-  const miss=S.parts.filter((p,i)=>st.stkSel[i]==="1"&&S.missing.includes(p));
   $("#stkParts").innerHTML=S.parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.stkSel[i]==="1"?"checked":""} style="width:auto"> ${p}${S.missing.includes(p)?'<span class="sub">*</span>':""}</label>`).join("")+
     `<button class="ib" data-preset="${S.default}" style="padding:3px 8px">기본</button><button class="ib" data-preset="${"1".repeat(S.parts.length)}" style="padding:3px 8px">전체(기관합계)</button>`+
-    (S.missing.length?`<span class="sub">* ${S.missing.join("·")} 수급은 아직 수집 전이라 이 날짜엔 0으로 계산됩니다 (데이터 갱신 후 반영)</span>`:"");
-  const sel=st.stkSel,date=st.D.date;
+    `<span style="flex-basis:100%;height:0"></span>`+
+    `<label class="num" title="하루 순매도가 시가총액 대비 이 % 이내면 연속이 끊기지 않은 것으로 봄 (0 = 순매수가 아니면 바로 끊김)">작은 순매도 무시 <input type="number" id="stkTol" min="0" max="1" step="0.01" value="${st.stkTol}" inputmode="decimal">% 이내</label>`+
+    `<label class="num" title="그보다 큰 순매도가 있는 날도 연속 중간에 이 일수까지는 건너뜀">순매도일 허용 <input type="number" id="stkGap" min="0" max="5" step="1" value="${st.stkGap}" inputmode="numeric">일</label>`+
+    ((st.stkTol||st.stkGap)?`<button class="ib" id="stkRuleReset" style="padding:3px 8px">규칙 기본값(0·0)</button>`:"")+
+    `<span class="sub">누적 금액·강도에는 중간의 순매도도 그대로 빠짐 · 시작일은 항상 순매수한 날</span>`+
+    (S.missing.length?`<span class="sub" style="flex-basis:100%">* ${S.missing.join("·")} 수급은 아직 수집 전이라 이 날짜엔 0으로 계산됩니다 (데이터 갱신 후 반영)</span>`:"");
+  const sel=st.stkSel,date=st.D.date,rule=`${st.stkTol}|${st.stkGap}`;
   $("#stkTitle").textContent=`연속 순매수 (${S.parts.filter((p,i)=>sel[i]==="1").join("+")})`;
-  if(!S.combos[sel])$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
+  if(!S.combos[sel]||st.stkTol||st.stkGap)$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
   streakCombo(S,sel).then(R=>{
-    if(st.D.date!==date||st.stkSel!==sel)return;  // 그 사이 날짜·체크가 바뀜
-    if(!R){$("#streaks").innerHTML='<div class="empty">이 조합은 open_dashboard.bat 으로 열었을 때 계산됩니다. (기본 조합과 전체 체크는 언제나 볼 수 있습니다)</div>';return}
+    if(st.D.date!==date||st.stkSel!==sel||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙이 바뀜
+    if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (기본 조합·전체 체크 + 규칙 0·0 은 휴대폰에서도 볼 수 있습니다)</div>';return}
     const C=R.combos[sel],tk=R.tk,n=st.listN;
     const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${title} 상위${rows.length}</h3></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 순매수<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
-      ${rows.map(([t,days,amt,s,d0,ret],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${esc(k[0])}</span><div class="code">${t}${k[2]?" · "+MK[k[2]]:""}</div></td>
-      <td class="l"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~</span></div></td>
+      ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${esc(k[0])}</span><div class="code">${t}${k[2]?" · "+MK[k[2]]:""}</div></td>
+      <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · 순매도 ${skip}일 포함`:""}</span></div></td>
       <td><div class="stack"><span>${fN(amt)}</span><span class="sub">시총 ${fN(k[1])}억</span></div></td><td class="up"><b>${fN(s,2)}</b></td>
       <td>${relCell(ret,d0,date)}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">해당 종목 없음</td></tr>'}</table></div></div>`};
     $("#streaks").innerHTML=tb("1일 이상 연속 · 누적 강도순",C.run,"c-warn","stk_e")+tb(`${R.confirm}일 이상 연속 · 지속 확인`,C.conf,"c-ok","stk_c");
@@ -734,11 +741,14 @@ function renderStreaks(){
   });
 }
 function setStk(sel){st.stkSel=sel;store.set("stkSel_v2",sel);renderStreaks()}
-$("#stkParts").addEventListener("change",e=>{const c=e.target.closest("input[type=checkbox]");if(!c)return;
+function setRule(tol,gap){st.stkTol=Math.max(0,Math.min(1,Math.round((+tol||0)*100)/100));st.stkGap=clampInt(gap,0,5,0);store.set("stkTol",st.stkTol);store.set("stkGap",st.stkGap);renderStreaks()}
+$("#stkParts").addEventListener("change",e=>{
+  if(e.target.id==="stkTol"||e.target.id==="stkGap"){setRule($("#stkTol").value,$("#stkGap").value);return}
+  const c=e.target.closest("input[type=checkbox]");if(!c)return;
   const a=st.stkSel.split("");a[+c.dataset.i]=c.checked?"1":"0";
   if(!a.includes("1")){c.checked=true;return}  // 최소 하나는 체크
   setStk(a.join(""))});
-$("#stkParts").addEventListener("click",e=>{const b=e.target.closest("[data-preset]");if(b)setStk(b.dataset.preset)});
+$("#stkParts").addEventListener("click",e=>{const b=e.target.closest("[data-preset]");if(b)setStk(b.dataset.preset);if(e.target.id==="stkRuleReset")setRule(0,0)});
 
 /* ===== 추적 ===== */
 const SC={"신규":"c-acc","상승확인":"c-ok","이탈주의":"c-risk","매집진행":"c-up","재점화 후보":"c-warn","추적연장":"c-vio"};
