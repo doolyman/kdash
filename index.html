@@ -131,15 +131,11 @@ details.crit summary{cursor:pointer;font-weight:600}
 .x{border:0;background:none;cursor:pointer;color:inherit;padding:0 0 0 2px}
 textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:8px}
 .muted-note{font-size:12px;color:var(--muted);margin-top:8px}
-#lists{grid-template-columns:repeat(auto-fit,minmax(310px,1fr))}
+/* 수급 주체별 표·연속 순매수 표: 한 줄에 하나씩 (가로 화면 전체) */
+.stackgrid{grid-template-columns:1fr}
 #lists th,#lists td{padding:6px 6px}
-#lists td.l .code{max-width:150px;overflow:hidden;text-overflow:ellipsis}
-#lists td.l .nm{display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
-.splitgrid{display:flex!important;gap:0!important;align-items:stretch}
-.splitgrid>.tw{min-width:0}
-.split{flex:0 0 12px;cursor:col-resize;display:flex;justify-content:center;touch-action:none;user-select:none}
-.split::before{content:"";width:4px;height:56px;margin-top:40px;border-radius:2px;background:var(--line);transition:background .15s}
-.split:hover::before,.split.on::before{background:var(--accent)}
+#lists td.l .code{max-width:260px;overflow:hidden;text-overflow:ellipsis}
+#lists td.l .nm{display:inline-block;max-width:260px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
 .ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 /* 시장 위험도 원: 점수 0–1 초록 · 2 노랑 · 3+ 빨강 */
 :root{--rk0:#2f9e5b;--rk1:#e8b100;--rk2:#d93a3a;--ix1:#d6336c;--ix2:#0b8f84}
@@ -176,7 +172,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div class="upd" id="updBox" hidden><button class="ib" id="upd">데이터 갱신</button><span class="sub" id="updMsg"></span></div>
     <nav class="tabs" id="tabs">
-      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
+      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#streak">연속 순매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
     </nav>
   </div>
 </header>
@@ -266,11 +262,14 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <div class="sh" style="margin-bottom:4px"><h3 id="secTopTitle">섹터 TOP 5</h3><span class="meta" id="secTopMeta"></span></div>
       <div class="sectop" id="secTop"></div>
     </div>
-    <div class="grid g3" id="lists"></div>
+    <div class="grid stackgrid" id="lists"></div>
+  </section>
 
-    <div class="sh" style="margin-top:22px"><h2 id="stkTitle">연속 순매수</h2><span class="meta">체크한 주체의 순매수 합계 기준 · 연속기간 누적 매수강도순 · 개수는 위 '상위' 숫자</span></div>
+  <!-- ================= 연속 순매수 ================= -->
+  <section class="sec" id="streak">
+    <div class="sh"><h2 id="stkTitle">연속 순매수</h2><span class="meta">체크한 주체의 순매수 합계 기준 · 연속기간 누적 매수강도순 · 개수는 '수급' 탭의 '상위' 숫자</span></div>
     <div class="ctrl" id="stkParts" style="margin-bottom:8px"></div>
-    <div class="grid g2" id="streaks"></div>
+    <div class="grid stackgrid" id="streaks"></div>
   </section>
 
   <!-- ================= 추적 ================= -->
@@ -920,41 +919,7 @@ function sortTable(tb,col,dir){
   const parent=rows[0].parentNode;rows.forEach(r=>parent.appendChild(r));
   [...tb.rows[0].cells].forEach((th,i)=>{th.dataset.arrow=i===col?(dir>0?" ▲":" ▼"):""});
 }
-/* ===== 나란히 붙은 표 너비 조절 (경계 끌기 · 두 번 클릭하면 같은 너비) ===== */
-const SPLIT_IDS=["lists","streaks"],widths=store.get("widths",{}),narrow=matchMedia("(max-width:760px)");
-const splitKids=g=>[...g.children].filter(c=>!c.classList.contains("split"));
-function addSplits(){
-  SPLIT_IDS.forEach(id=>{
-    const g=document.getElementById(id);if(!g)return;
-    g.querySelectorAll(":scope>.split").forEach(s=>s.remove());
-    const kids=splitKids(g);
-    if(narrow.matches||kids.length<2){g.classList.remove("splitgrid");kids.forEach(k=>k.style.flex="");return}
-    g.classList.add("splitgrid");
-    const w=(widths[id]||[]).length===kids.length?widths[id]:kids.map(()=>1);
-    kids.forEach((k,i)=>{k.style.flex=`${w[i]} 1 0`;
-      if(i){const s=document.createElement("div");s.className="split";s.title="끌어서 너비 조절 · 두 번 클릭하면 같은 너비";k.before(s)}});
-  });
-}
-narrow.addEventListener("change",addSplits);
-let sdrag=null;
-document.addEventListener("pointerdown",e=>{
-  const s=e.target.closest(".split");if(!s)return;
-  const g=s.parentElement,kids=splitKids(g);
-  sdrag={s,g,kids,l:s.previousElementSibling,r:s.nextElementSibling,x:e.clientX,px:kids.map(k=>k.getBoundingClientRect().width)};
-  s.classList.add("on");s.setPointerCapture(e.pointerId);e.preventDefault();
-});
-document.addEventListener("pointermove",e=>{
-  if(!sdrag)return;const {kids,l,r,px}=sdrag,li=kids.indexOf(l),ri=kids.indexOf(r),tot=px[li]+px[ri],MIN=200;
-  const nl=Math.max(MIN,Math.min(tot-MIN,px[li]+e.clientX-sdrag.x));
-  kids.forEach((k,i)=>k.style.flex=`${i===li?nl:i===ri?tot-nl:px[i]} 1 0`);
-});
-document.addEventListener("pointerup",()=>{
-  if(!sdrag)return;const id=sdrag.g.id;
-  widths[id]=sdrag.kids.map(k=>Math.round(k.getBoundingClientRect().width));store.set("widths",widths);
-  sdrag.s.classList.remove("on");sdrag=null;
-});
-document.addEventListener("dblclick",e=>{const s=e.target.closest(".split");if(!s)return;delete widths[s.parentElement.id];store.set("widths",widths);addSplits()});
-function applySorts(){addGrips();addSplits();Object.entries(sorts).forEach(([id,s])=>{const tb=document.getElementById(id);if(tb)sortTable(tb,s.col,s.dir)})}
+function applySorts(){addGrips();Object.entries(sorts).forEach(([id,s])=>{const tb=document.getElementById(id);if(tb)sortTable(tb,s.col,s.dir)})}
 document.addEventListener("click",e=>{
   const th=e.target.closest("th");if(!th)return;const tb=th.closest("table");if(!tb||!tb.id)return;
   const col=th.cellIndex,cur=sorts[tb.id];
@@ -963,7 +928,7 @@ document.addEventListener("click",e=>{
 });
 
 /* nav highlight */
-const secs=["market","sector","flow","track"];
+const secs=["market","sector","flow","streak","track"];
 addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
   document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur))},{passive:true});
 document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();document.getElementById(a.getAttribute("href").slice(1)).scrollIntoView({behavior:"smooth"})}));
