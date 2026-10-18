@@ -6,6 +6,7 @@
 <title>기관 수급 레이더</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
@@ -628,8 +629,11 @@ function renderBubble(){
   const cnt={};B.points.forEach(p=>cnt[p.cls]=(cnt[p.cls]||0)+1);
   $("#bubCls").innerHTML=Object.keys(BCLS).map(k=>`<button class="chip" data-k="${k}" style="cursor:pointer;${st.bubOff.has(k)?"opacity:.4;":""}background:color-mix(in srgb,var(${BCLS[k]}) 18%,var(--panel));color:var(${BCLS[k]})">${k} ${cnt[k]||0}</button>`).join("");
   const pts=B.points.filter(p=>!st.bubOff.has(p.cls));
-  const labelPlugin={id:"lbl",afterDatasetsDraw(c){const ctx=c.ctx;ctx.save();ctx.font="600 11px "+css("--font");ctx.fillStyle=css("--fg");ctx.textAlign="center";
-    c.data.datasets.forEach((ds,di)=>c.getDatasetMeta(di).data.forEach((el,i)=>{const p=ds.data[i];ctx.fillText(p.sector,el.x,el.y-(el.options.radius||6)-4)}));ctx.restore()}};
+  // 섹터 이름: 배경색 테두리를 둘러 점·격자·어떤 테마(브라우저 강제 다크 포함) 위에서도 읽히게
+  const labelPlugin={id:"lbl",afterDatasetsDraw(c){const ctx=c.ctx;ctx.save();ctx.font="600 11px "+css("--font");ctx.textAlign="center";
+    ctx.fillStyle=css("--fg");ctx.strokeStyle=css("--panel");ctx.lineWidth=3;ctx.lineJoin="round";
+    c.data.datasets.forEach((ds,di)=>c.getDatasetMeta(di).data.forEach((el,i)=>{const p=ds.data[i],y=el.y-(el.options.radius||6)-4;
+      ctx.strokeText(p.sector,el.x,y);ctx.fillText(p.sector,el.x,y)}));ctx.restore()}};
   const ds=Object.keys(BCLS).map(k=>({label:k,data:pts.filter(p=>p.cls===k).map(p=>({x:p.x,y:p.y,r:4+(p.size||0)/9,sector:p.sector})),
     backgroundColor:css(BCLS[k])+"bb",borderColor:css(BCLS[k])}));
   mk("bubChart",{type:"bubble",data:{datasets:ds},plugins:[labelPlugin],options:baseOpts({interaction:{mode:"nearest",intersect:true},
