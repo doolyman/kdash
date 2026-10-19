@@ -101,6 +101,8 @@ tr.lo2 td{background:var(--lo2)}
 .sectop li{display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:baseline;font-size:13px}
 .sectop li .bar{grid-column:2/4;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
 .sectop li .bar i{display:block;height:100%}
+.sector-link{border:0;background:none;padding:0;color:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.sector-link:hover,.sector-link[aria-expanded="true"]{color:var(--accent)}
 td.sum{background:var(--sum-bg)}
 .star{color:#d79a1c;margin-left:3px}
 .scroll-y{max-height:560px;overflow:auto}
@@ -173,7 +175,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div class="upd" id="updBox" hidden><button class="ib" id="upd">데이터 갱신</button><span class="sub" id="updMsg"></span></div>
     <nav class="tabs" id="tabs">
-      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#streak">연속 순매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
+      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">최다 출현</a><a href="#streak">연속 순매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
     </nav>
   </div>
 </header>
@@ -260,10 +262,23 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       </div></div>
     <div class="chips" id="listLegend" style="margin-bottom:8px"></div>
     <div class="panel" style="margin-bottom:12px">
-      <div class="sh" style="margin-bottom:4px"><h3 id="secTopTitle">섹터 TOP 5</h3><span class="meta" id="secTopMeta"></span></div>
+      <div class="sh" style="margin-bottom:4px"><h3 id="secTopTitle">섹터 TOP 7</h3><span class="meta" id="secTopMeta"></span></div>
       <div class="sectop" id="secTop"></div>
+      <div id="secTopDetail" style="margin-top:12px" hidden></div>
     </div>
     <div class="grid stackgrid" id="lists"></div>
+  </section>
+
+  <!-- ================= 최다 출현 ================= -->
+  <section class="sec" id="appearance">
+    <div class="sh"><h2>순매수 최다 출현</h2>
+      <div class="ctrl"><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
+      <span class="meta">기관별 상위 <b id="appTopN">50</b>개 · 수급 탭의 상위 개수와 연동</span></div>
+    </div>
+    <div class="ctrl" id="appParts" style="margin-bottom:8px"></div>
+    <div class="sub" id="appMeta" style="margin-bottom:8px"></div>
+    <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="appTbl"></table></div></div>
+    <div class="muted-note">선택한 기관 중 하나라도 상위에 들면 하루 1회 · 출현일수 내림차순 · 최근 출현은 선택한 기준일부터 거래일로 계산 · 수익률은 조회 기간 안의 종목별 첫 출현일 종가 기준</div>
   </section>
 
   <!-- ================= 연속 순매수 ================= -->
@@ -323,6 +338,9 @@ const store={get(k,d){try{const v=localStorage.getItem("kd_"+k);return v?JSON.pa
 const st={src:"data/",dates:[],date:null,D:null,side:"buy",slots:[],slot:0,bubSide:"b",bubW:null,bubTop:null,bubOff:new Set(),fundN:0,tvN:0,cmp:[],trkF:null,trkM:null,listN:null,btN:null,stkSel:null};
 const charts={};
 let overrides=store.get("ov",{});
+st.appDays=clampAppDays(store.get("appDays",30));
+st.appSel=/^[01]{3}$/.test(store.get("appSel","010"))?store.get("appSel","010"):"010";
+function clampAppDays(v){const n=parseInt(v,10);return Number.isFinite(n)?Math.max(1,n):30}
 const clampInt=(v,lo,hi,d)=>{v=parseInt(v,10);return isNaN(v)?d:Math.max(lo,Math.min(hi,v))};
 
 /* ---------- format ---------- */
@@ -349,8 +367,8 @@ async function loadIndex(bust){
       b.textContent="샘플(가상) 데이터로 표시 중입니다. 실제 수치가 아닙니다. 수집기를 실행하면 실제 데이터로 바뀝니다.";
     }
   }
-  window.KD_BUB=null;BUBIDX=null;window.KD_SER=null;window.KD_EV=null;SERIDX=null;
-  await Promise.all(["bubble.js","series.js","events.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
+  window.KD_BUB=null;BUBIDX=null;window.KD_SER=null;window.KD_EV=null;window.KD_APP=null;SERIDX=null;
+  await Promise.all(["bubble.js","series.js","events.js","appearances.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
   st.dates=(window.KD_DATES||[]).slice().sort();
   const cfg=window.KD_CFG||{};
   if(window.KD_CFG)document.querySelectorAll("[data-cfg]").forEach(el=>{const v=cfg[el.dataset.cfg];if(v!=null)el.textContent=v});
@@ -452,7 +470,7 @@ function render(){
   const D=st.D;
   $("#gen").textContent=`생성 ${D.generated} · 저장 ${D.n_days_stored}거래일`;
   history.replaceState(null,"","#d"+D.date.replace(/-/g,""));
-  renderMarket();renderSectors();renderSim();renderLists();renderStreaks();renderTrack();renderBT();renderOv();applySorts();
+  renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderStreaks();renderTrack();renderBT();renderOv();applySorts();
 }
 
 function mk(id,cfg){if(charts[id])charts[id].destroy();const c=document.getElementById(id);if(!c||!window.Chart)return;charts[id]=new Chart(c,cfg)}
@@ -700,7 +718,41 @@ function renderLists(){
     </table></div></div>`).join("");
 }
 $("#sideSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.side=b.dataset.s;[...$("#sideSeg").children].forEach(x=>x.classList.toggle("on",x===b));renderLists();applySorts()};
-$("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||100,50);e.target.value=st.listN;store.set("listN_v2",st.listN);renderSim();renderLists();renderStreaks();applySorts()};
+$("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||100,50);e.target.value=st.listN;store.set("listN_v2",st.listN);renderSim();renderLists();renderAppearances();renderStreaks();applySorts()};
+
+/* 최다 출현: 7개 기관 조합의 날짜별 순위를 미리 저장, 조회 기간·상위 개수는 화면에서 적용 */
+function appearanceCalc(A,date,sel,n,days){
+  const dates=A.dates.filter(d=>d<=date),end=dates.length-1;
+  if(end<0||dates[end]!==date)return {dates:[],rows:[]};
+  const windowDates=dates.slice(-days),counts=new Map();
+  for(const d of windowDates){
+    for(const [i,rank] of A.days[d]?.combos[sel]||[]){
+      if(rank>n)continue;
+      const row=counts.get(i)||{i,count:0,first:d,last:d};
+      row.count++;row.last=d;counts.set(i,row);
+    }
+  }
+  const pos=new Map(dates.map((d,i)=>[d,i]));
+  const rows=[...counts.values()].map(r=>{
+    const p0=A.days[r.first]?.close[r.i],p1=A.days[date]?.close[r.i];
+    return {...r,ago:end-pos.get(r.last),ret:p0>0&&p1!=null?(p1/p0-1)*100:null};
+  }).sort((a,b)=>b.count-a.count||a.ago-b.ago||A.T[a.i].localeCompare(A.T[b.i]));
+  return {dates:windowDates,rows};
+}
+function renderAppearances(){
+  const A=window.KD_APP,parts=A?.parts||INV;
+  $("#appDays").value=st.appDays;$("#appTopN").textContent=st.listN;
+  $("#appParts").innerHTML=parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.appSel[i]==="1"?"checked":""} style="width:auto"> ${esc(p)}</label>`).join("");
+  const empty=m=>{$("#appMeta").textContent="";$("#appTbl").innerHTML=`<tr><td class="empty">${m}</td></tr>`};
+  if(!A||!A.days[st.D.date])return empty("최다 출현 데이터가 없습니다. 다음 데이터 계산 후 표시됩니다.");
+  if(!st.appSel.includes("1"))return empty("수급 주체를 하나 이상 선택하세요.");
+  const R=appearanceCalc(A,st.D.date,st.appSel,st.listN,st.appDays);
+  $("#appMeta").textContent=`${R.dates[0]} ~ ${st.D.date} · 기준일 포함 ${R.dates.length}거래일 / 요청 ${st.appDays}거래일 · ${parts.filter((p,i)=>st.appSel[i]==="1").join("+")} · ${R.rows.length}종목`;
+  $("#appTbl").innerHTML=`<tr><th class="c">순위</th><th class="l">종목 · 섹터</th><th>출현일수</th><th class="c">가장 최근 출현</th><th class="c">첫 출현일</th><th>첫 출현일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>`+
+    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${esc(A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">이 기간에 상위 순매수 출현 종목이 없습니다.</td></tr>');
+}
+$("#appDays").onchange=e=>{st.appDays=clampAppDays(e.target.value);store.set("appDays",st.appDays);renderAppearances();applySorts()};
+$("#appParts").onchange=e=>{if(!e.target.matches("input[data-i]"))return;const bits=st.appSel.split("");bits[+e.target.dataset.i]=e.target.checked?"1":"0";st.appSel=bits.join("");store.set("appSel",st.appSel);renderAppearances();applySorts()};
 /* 연속 순매수: 체크한 주체 순매수 합계가 연속 플러스인 종목.
    기본 조합·전부 체크는 파일에 미리 계산돼 있고, 그 밖의 조합은 로컬 실행기(open_dashboard.bat)에 물어봄 */
 const stkCache={};
@@ -800,22 +852,35 @@ $("#cmpChips").onclick=e=>{const b=e.target.closest(".x");if(!b)return;st.cmp=st
 
 
 
-/* ===== 기관별 상위 → 섹터 TOP 5 ===== */
+/* ===== 기관별 상위 → 섹터 TOP 7 ===== */
 function secAgg(rows){
   const m={};
-  rows.forEach(r=>{const s=secOf(r.t,r.sec);if(!s)return;const o=m[s]||(m[s]={s,amt:0,names:new Set(),str:0});o.amt+=r.amt||0;o.str+=r.s||0;o.names.add(r.n)});
-  return Object.values(m).sort((a,b)=>b.amt-a.amt).slice(0,5);
+  rows.forEach(r=>{const s=secOf(r.t,r.sec);if(!s)return;const o=m[s]||(m[s]={s,amt:0,stocks:new Map()});o.amt+=r.amt||0;
+    const stock=o.stocks.get(r.t)||{t:r.t,n:r.n,amt:0,s:0};stock.amt+=r.amt||0;stock.s+=r.s||0;o.stocks.set(r.t,stock)});
+  return Object.values(m).map(o=>({...o,members:[...o.stocks.values()].sort((a,b)=>b.amt-a.amt||a.t.localeCompare(b.t))})).sort((a,b)=>b.amt-a.amt).slice(0,7);
 }
+let secTopGroups=[];
 function renderSecTop(side,L){
   const w=side==="buy"?"순매수":"순매도",col=side==="buy"?"var(--up)":"var(--down)";
-  $("#secTopTitle").textContent=`${w} 섹터 TOP 5`;
-  $("#secTopMeta").textContent=`아래 표(상위 ${st.listN})에 든 종목을 섹터별로 묶은 금액 합계 · 미지정 종목 제외`;
+  $("#secTopTitle").textContent=`${w} 섹터 TOP 7`;
+  $("#secTopMeta").textContent=`아래 표(상위 ${st.listN})의 섹터별 금액 합계 · 섹터명을 누르면 종목별 금액순 표시 · 미지정 제외`;
   const groups=[["3기관 합계",INV.flatMap(k=>L[k])]].concat(INV.map(k=>[k,L[k]]));
-  $("#secTop").innerHTML=groups.map(([title,rows])=>{
-    const top=secAgg(rows),mx=top[0]?.amt||1;
-    return `<div><div class="lbl"><b>${title}</b></div><ol>${top.map((o,i)=>`<li title="${esc([...o.names].join(", "))}"><span class="mut">${i+1}</span><span><b>${esc(o.s)}</b> <span class="sub">${o.names.size}종목</span></span><span style="color:${col}"><b>${fN(o.amt)}</b><span class="sub">백만</span></span><span class="bar"><i style="width:${Math.max(4,o.amt/mx*100)}%;background:${col}"></i></span></li>`).join("")||'<li><span></span><span class="mut">섹터가 지정된 종목 없음</span></li>'}</ol></div>`;
+  secTopGroups=groups.map(([title,rows])=>({title,top:secAgg(rows)}));
+  $("#secTop").innerHTML=secTopGroups.map(({title,top},g)=>{
+    const mx=top[0]?.amt||1;
+    return `<div><div class="lbl"><b>${title}</b></div><ol>${top.map((o,i)=>`<li><span class="mut">${i+1}</span><span><button class="sector-link" data-g="${g}" data-i="${i}" aria-controls="secTopDetail" aria-expanded="${st.secTopSel?.side===side&&st.secTopSel?.group===g&&st.secTopSel?.sector===o.s}">${esc(o.s)}</button> <span class="sub">${o.members.length}종목</span></span><span style="color:${col}"><b>${fN(o.amt)}</b><span class="sub">백만</span></span><span class="bar"><i style="width:${Math.max(4,o.amt/mx*100)}%;background:${col}"></i></span></li>`).join("")||'<li><span></span><span class="mut">섹터가 지정된 종목 없음</span></li>'}</ol></div>`;
   }).join("");
+  renderSecTopDetail();
 }
+function renderSecTopDetail(){
+  const box=$("#secTopDetail"),sel=st.secTopSel,group=sel&&secTopGroups[sel.group],o=sel?.side===st.side&&group?.top.find(o=>o.s===sel.sector);
+  box.hidden=!o;if(!o){box.innerHTML="";return}
+  const w=st.side==="buy"?"순매수":"순매도";
+  box.innerHTML=`<div class="sh"><h3>${esc(group.title)} · ${esc(o.s)} · ${w} 금액순</h3><button class="ib" id="secTopClose">닫기</button></div><div class="tw"><div class="scroll-y" style="max-height:360px"><table id="secTopStocks"><tr><th class="c">순위</th><th class="l">종목</th><th>${w} 금액(백만원)</th><th>매수·매도 강도</th></tr>${o.members.map((r,i)=>`<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${esc(r.n)}</span><div class="code">${r.t}</div></td><td>${fN(r.amt)}</td><td>${fN(r.s,2)}%</td></tr>`).join("")}</table></div></div>`;
+  $("#secTopClose").onclick=()=>{st.secTopSel=null;renderLists();applySorts()};
+}
+$("#secTop").onclick=e=>{const b=e.target.closest("button[data-g]");if(!b)return;const group=+b.dataset.g,sector=secTopGroups[group].top[+b.dataset.i].s;
+  st.secTopSel=st.secTopSel?.side===st.side&&st.secTopSel?.group===group&&st.secTopSel?.sector===sector?null:{side:st.side,group,sector};renderLists();applySorts()};
 
 /* ===== 감지 성과 검증 ===== */
 /* events.js(전체 감지 건) → 기준일까지 확정된 결과만으로 집계. 기간은 '최근 N거래일'(기본: 보유 전체) */
@@ -932,7 +997,7 @@ document.addEventListener("click",e=>{
 });
 
 /* nav highlight */
-const secs=["market","sector","flow","streak","track"];
+const secs=["market","sector","flow","appearance","streak","track"];
 addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
   document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur))},{passive:true});
 document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();document.getElementById(a.getAttribute("href").slice(1)).scrollIntoView({behavior:"smooth"})}));
