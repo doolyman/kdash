@@ -709,6 +709,13 @@ function renderSim(){
     ${INV.map(k=>`<td><b>${r.inv[k].rank}위</b></td><td><div class="stack"><span class="up">${fP(r.inv[k].s,2,false)}</span><span class="sub">${fN(r.inv[k].amt)}백만원</span></div></td>`).join("")}
     <td class="sum"><div class="stack"><b class="up">${fP(r.s,2,false)}</b><span class="sub">${fN(r.amt)}백만원</span></div></td></tr>`).join("");
 }
+function flowReturnCell(r,D=st.D){
+  const ret=r.r1??D.bub_now?.[r.t]?.[1]??null;
+  const excess=m=>ret==null||D.market?.index?.[m]?.r1==null?null:ret-D.market.index[m].r1;
+  const k=excess("KOSPI"),q=excess("KOSDAQ");
+  const pp=v=>pc(v).replace("%","%p");
+  return `<td data-sort="${ret??""}"><div class="stack"><b>${pc(ret)}</b><span class="sub">피 ${pp(k)} · 닥 ${pp(q)}</span></div></td>`;
+}
 function renderLists(){
   const side=st.side,n=st.listN,L={};
   INV.forEach(k=>L[k]=(st.D.lists[side][k]||[]).slice(0,n));
@@ -720,10 +727,10 @@ function renderLists(){
   $("#listLegend").innerHTML=`<span class="chip" style="background:var(${c3});color:var(--fg)">3기관 모두 ${w} 상위${n}</span><span class="chip" style="background:var(${c2});color:var(--fg)">2기관 ${w} 상위${n}</span><span class="chip"><span class="star">★</span> 매집 추적 중</span><span class="chip">강도 = ${w} ÷ 시가총액</span><span class="chip">표 제목 칸을 누르면 정렬</span>`;
   renderSecTop(side,L);
   $("#lists").innerHTML=INV.map(k=>`<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${k} ${w} 상위${L[k].length}</h3></div>
-    <div class="scroll-y" style="max-height:640px"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th></tr>
+    <div class="scroll-y" style="max-height:640px"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
     ${L[k].map((r,i)=>`<tr class="${r.multi===3?(side==="buy"?"hi3":"lo3"):r.multi===2?(side==="buy"?"hi2":"lo2"):""}"><td class="c mut">${i+1}</td>
       <td class="l"><span class="nm">${esc(r.n)}</span>${r.star?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${r.t}${r.sec?" · "+esc(secOf(r.t,r.sec)):""}</div></td>
-      <td><div class="stack"><span>${fN(r.amt)}</span><span class="sub">시총 ${fN(r.cap)}억</span></div></td><td class="${side==="buy"?"up":"dn"}"><b>${fN(r.s,2)}</b></td></tr>`).join("")||(st.D.lists[side][k]?'<tr><td class="empty" colspan="4">데이터 없음</td></tr>':"")}
+      <td><div class="stack"><span>${fN(r.amt)}</span><span class="sub">시총 ${fN(r.cap)}억</span></div></td><td class="${side==="buy"?"up":"dn"}"><b>${fN(r.s,2)}</b></td>${flowReturnCell(r)}</tr>`).join("")||(st.D.lists[side][k]?'<tr><td class="empty" colspan="5">데이터 없음</td></tr>':"")}
     </table></div></div>`).join("");
 }
 $("#sideSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.side=b.dataset.s;[...$("#sideSeg").children].forEach(x=>x.classList.toggle("on",x===b));renderLists();applySorts()};
