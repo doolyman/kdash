@@ -392,7 +392,7 @@ function initialDate(dates,hash,latest){
 }
 async function init(){
   if(window.kdEncReady)await window.kdEncReady;  // 비밀번호 입력 대기
-  if(window.kdEncLock){const b=document.createElement("button");b.className="ib";b.textContent="🔒 잠금";b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".bar-in").appendChild(b)}
+  if(window.kdEncLock){const b=document.createElement("button");b.className="ib";b.textContent="🔒";b.setAttribute("aria-label","잠금");b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".datebox").appendChild(b)}
   const latest=latestOnOpen();
   await loadIndex(latest);  // 모바일은 캐시된 날짜 목록 대신 최신 목록 확인
   if(!st.dates.length){$("#banner").hidden=false;$("#banner").textContent="데이터가 없습니다. open_dashboard.bat 으로 실행하면 데이터를 받습니다.";srvInit();return}
