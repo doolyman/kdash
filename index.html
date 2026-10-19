@@ -175,7 +175,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div class="upd" id="updBox" hidden><button class="ib" id="upd">데이터 갱신</button><span class="sub" id="updMsg"></span></div>
     <nav class="tabs" id="tabs">
-      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">최다 출현</a><a href="#streak">연속 순매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
+      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">최다 출현</a><a href="#streak">연속 매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
     </nav>
   </div>
 </header>
@@ -271,9 +271,10 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 최다 출현 ================= -->
   <section class="sec" id="appearance">
-    <div class="sh"><h2>순매수 최다 출현</h2>
+    <div class="sh"><h2 id="appTitle">순매수 최다 출현</h2>
       <div class="ctrl"><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
-      <span class="meta">기관별 상위 <b id="appTopN">50</b>개 · 수급 탭의 상위 개수와 연동</span></div>
+      <span class="meta">기관별 상위 <b id="appTopN">50</b>개 · 수급 탭의 상위 개수와 연동</span>
+      <div class="seg" id="appSide"><button data-s="buy" class="on">순매수</button><button data-s="sell">순매도</button></div></div>
     </div>
     <div class="ctrl" id="appParts" style="margin-bottom:8px"></div>
     <div class="sub" id="appMeta" style="margin-bottom:8px"></div>
@@ -281,9 +282,10 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="muted-note">선택한 기관 중 하나라도 상위에 들면 하루 1회 · 출현일수 내림차순 · 최근 출현은 선택한 기준일부터 거래일로 계산 · 수익률은 조회 기간 안의 종목별 첫 출현일 종가 기준</div>
   </section>
 
-  <!-- ================= 연속 순매수 ================= -->
+  <!-- ================= 연속 매수 ================= -->
   <section class="sec" id="streak">
-    <div class="sh"><h2 id="stkTitle">연속 순매수</h2><span class="meta">체크한 주체의 순매수 합계 기준 · 연속기간 누적 매수강도순 · 개수는 '수급' 탭의 '상위' 숫자</span></div>
+    <div class="sh"><h2 id="stkTitle">연속 매수</h2><div class="ctrl"><span class="meta" id="stkMeta">체크한 주체의 순매수 합계 기준 · 연속기간 누적 매수강도순 · 개수는 '수급' 탭의 '상위' 숫자</span>
+      <div class="seg" id="stkSide"><button data-s="buy" class="on">순매수</button><button data-s="sell">순매도</button></div></div></div>
     <div class="ctrl" id="stkParts" style="margin-bottom:8px"></div>
     <div class="grid stackgrid" id="streaks"></div>
   </section>
@@ -335,7 +337,7 @@ const INV=["사모","연기금","투신"], INV_S={"사모":"사","연기금":"�
 const MK={KS:"코스피",KQ:"코스닥"};
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem("kd_"+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem("kd_"+k,JSON.stringify(v))}catch(e){}}};
-const st={src:"data/",dates:[],date:null,D:null,side:"buy",slots:[],slot:0,bubSide:"b",bubW:null,bubTop:null,bubOff:new Set(),fundN:0,tvN:0,cmp:[],trkF:null,trkM:null,listN:null,btN:null,stkSel:null};
+const st={src:"data/",dates:[],date:null,D:null,side:"buy",appSide:"buy",stkSide:"buy",slots:[],slot:0,bubSide:"b",bubW:null,bubTop:null,bubOff:new Set(),fundN:0,tvN:0,cmp:[],trkF:null,trkM:null,listN:null,btN:null,stkSel:null};
 const charts={};
 let overrides=store.get("ov",{});
 st.appDays=clampAppDays(store.get("appDays",30));
@@ -737,12 +739,13 @@ $("#sideSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.sid
 $("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||100,50);e.target.value=st.listN;store.set("listN_v2",st.listN);renderSim();renderLists();renderAppearances();renderStreaks();applySorts()};
 
 /* 최다 출현: 7개 기관 조합의 날짜별 순위를 미리 저장, 조회 기간·상위 개수는 화면에서 적용 */
-function appearanceCalc(A,date,sel,n,days){
+function appearanceCalc(A,date,sel,n,days,side="buy"){
   const dates=A.dates.filter(d=>d<=date),end=dates.length-1;
   if(end<0||dates[end]!==date)return {dates:[],rows:[]};
   const windowDates=dates.slice(-days),counts=new Map();
   for(const d of windowDates){
-    for(const [i,rank] of A.days[d]?.combos[sel]||[]){
+    const combos=side==="sell"?A.days[d]?.sell_combos:A.days[d]?.combos;
+    for(const [i,rank] of combos?.[sel]||[]){
       if(rank>n)continue;
       const row=counts.get(i)||{i,count:0,first:d,last:d};
       row.count++;row.last=d;counts.set(i,row);
@@ -757,60 +760,68 @@ function appearanceCalc(A,date,sel,n,days){
 }
 function renderAppearances(){
   const A=window.KD_APP,parts=A?.parts||INV;
+  const side=st.appSide||"buy",word=side==="buy"?"순매수":"순매도";
+  $("#appTitle").textContent=`${word} 최다 출현`;
   $("#appDays").value=st.appDays;$("#appTopN").textContent=st.listN;
   $("#appParts").innerHTML=parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.appSel[i]==="1"?"checked":""} style="width:auto"> ${esc(p)}</label>`).join("");
   const empty=m=>{$("#appMeta").textContent="";$("#appTbl").innerHTML=`<tr><td class="empty">${m}</td></tr>`};
   if(!A||!A.days[st.D.date])return empty("최다 출현 데이터가 없습니다. 다음 데이터 계산 후 표시됩니다.");
+  if(side==="sell"&&!A.days[st.D.date].sell_combos)return empty("순매도 최다 출현 데이터는 데이터 갱신(다시 계산) 후 표시됩니다.");
   if(!st.appSel.includes("1"))return empty("수급 주체를 하나 이상 선택하세요.");
-  const R=appearanceCalc(A,st.D.date,st.appSel,st.listN,st.appDays);
+  const R=appearanceCalc(A,st.D.date,st.appSel,st.listN,st.appDays,side);
   $("#appMeta").textContent=`${R.dates[0]} ~ ${st.D.date} · 기준일 포함 ${R.dates.length}거래일 / 요청 ${st.appDays}거래일 · ${parts.filter((p,i)=>st.appSel[i]==="1").join("+")} · ${R.rows.length}종목`;
   $("#appTbl").innerHTML=`<tr><th class="c">순위</th><th class="l">종목 · 섹터</th><th>출현일수</th><th class="c">가장 최근 출현</th><th class="c">첫 출현일</th><th>첫 출현일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>`+
-    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${esc(A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">이 기간에 상위 순매수 출현 종목이 없습니다.</td></tr>');
+    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${esc(A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">이 기간에 상위 ${word} 출현 종목이 없습니다.</td></tr>`);
 }
+$("#appSide").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.appSide=b.dataset.s;[...$("#appSide").children].forEach(x=>x.classList.toggle("on",x===b));renderAppearances();applySorts()};
 $("#appDays").onchange=e=>{st.appDays=clampAppDays(e.target.value);store.set("appDays",st.appDays);renderAppearances();applySorts()};
 $("#appParts").onchange=e=>{if(!e.target.matches("input[data-i]"))return;const bits=st.appSel.split("");bits[+e.target.dataset.i]=e.target.checked?"1":"0";st.appSel=bits.join("");store.set("appSel",st.appSel);renderAppearances();applySorts()};
-/* 연속 순매수: 체크한 주체 순매수 합계가 연속 플러스인 종목.
+/* 연속 매수·매도: 체크한 주체 합계에 방향별로 동일한 연속 규칙 적용.
    기본 조합·전부 체크는 파일에 미리 계산돼 있고, 그 밖의 조합은 로컬 실행기(open_dashboard.bat)에 물어봄 */
 const stkCache={};
 /* 연속 규칙: tol = 하루 순매도가 시총 대비 tol% 이내면 끊지 않음, gap = 그보다 큰 순매도일도 gap일까지 건너뜀 (둘 다 0 = 순매수 아닌 날 바로 끊김) */
 st.stkTol=+store.get("stkTol",0)||0;st.stkGap=+store.get("stkGap",0)||0;
 async function streakCombo(S,sel){
+  const side=st.stkSide||"buy",saved=side==="sell"?S.sell:S;
   const plain=!st.stkTol&&!st.stkGap;
-  if(plain&&S.combos[sel])return S;
-  const key=`${st.D.date}|${sel}|${st.stkTol}|${st.stkGap}`;if(stkCache[key])return stkCache[key];
+  if(plain&&saved?.combos[sel])return saved;
+  const key=`${st.D.date}|${side}|${sel}|${st.stkTol}|${st.stkGap}`;if(stkCache[key])return stkCache[key];
   if(!location.protocol.startsWith("http"))return null;
-  try{const r=await fetch(`/api/streaks?date=${st.D.date}&sel=${sel}&tol=${st.stkTol}&gap=${st.stkGap}`);if(!r.ok)return null;return stkCache[key]=await r.json()}catch(e){return null}
+  try{const r=await fetch(`/api/streaks?date=${st.D.date}&sel=${sel}&tol=${st.stkTol}&gap=${st.stkGap}&side=${side}`);if(!r.ok)return null;return stkCache[key]=await r.json()}catch(e){return null}
 }
 function renderStreaks(){
   const S=st.D.streaks;
   if(!S||!S.combos||S.parts.length!==7){$("#stkParts").innerHTML="";$("#streaks").innerHTML='<div class="empty">데이터 갱신(다시 계산) 후 나타납니다.</div>';return}
+  const side=st.stkSide||"buy",buy=side==="buy",word=buy?"순매수":"순매도",opposite=buy?"순매도":"순매수";
+  $("#stkMeta").textContent=`체크한 주체의 ${word} 합계 기준 · 연속기간 누적 ${buy?"매수":"매도"}강도순 · 개수는 '수급' 탭의 '상위' 숫자`;
   if(!st.stkSel||st.stkSel.length!==S.parts.length)st.stkSel=store.get("stkSel_v2",S.default);
   if(st.stkSel.length!==S.parts.length)st.stkSel=S.default;
   $("#stkParts").innerHTML=S.parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.stkSel[i]==="1"?"checked":""} style="width:auto"> ${p}${S.missing.includes(p)?'<span class="sub">*</span>':""}</label>`).join("")+
     `<button class="ib" data-preset="${S.default}" style="padding:3px 8px">기본</button><button class="ib" data-preset="${"1".repeat(S.parts.length)}" style="padding:3px 8px">전체(기관합계)</button>`+
     `<span style="flex-basis:100%;height:0"></span>`+
-    `<label class="num" title="하루 순매도가 시가총액 대비 이 % 이내면 연속이 끊기지 않은 것으로 봄 (0 = 순매수가 아니면 바로 끊김)">작은 순매도 무시 <input type="number" id="stkTol" min="0" max="1" step="0.01" value="${st.stkTol}" inputmode="decimal">% 이내</label>`+
-    `<label class="num" title="그보다 큰 순매도가 있는 날도 연속 중간에 이 일수까지는 건너뜀">순매도일 허용 <input type="number" id="stkGap" min="0" max="5" step="1" value="${st.stkGap}" inputmode="numeric">일</label>`+
+    `<label class="num" title="하루 ${opposite}가 시가총액 대비 이 % 이내면 연속이 끊기지 않은 것으로 봄 (0 = ${word}가 아니면 바로 끊김)">작은 ${opposite} 무시 <input type="number" id="stkTol" min="0" max="1" step="0.01" value="${st.stkTol}" inputmode="decimal">% 이내</label>`+
+    `<label class="num" title="그보다 큰 ${opposite}가 있는 날도 연속 중간에 이 일수까지는 건너뜀">${opposite}일 허용 <input type="number" id="stkGap" min="0" max="5" step="1" value="${st.stkGap}" inputmode="numeric">일</label>`+
     ((st.stkTol||st.stkGap)?`<button class="ib" id="stkRuleReset" style="padding:3px 8px">규칙 기본값(0·0)</button>`:"")+
-    `<span class="sub">누적 금액·강도에는 중간의 순매도도 그대로 빠짐 · 시작일은 항상 순매수한 날</span>`+
+    `<span class="sub">누적 금액·강도에는 중간의 ${opposite}도 그대로 빠짐 · 시작일은 항상 ${word}한 날</span>`+
     (S.missing.length?`<span class="sub" style="flex-basis:100%">* ${S.missing.join("·")} 수급은 아직 수집 전이라 이 날짜엔 0으로 계산됩니다 (데이터 갱신 후 반영)</span>`:"");
   const sel=st.stkSel,date=st.D.date,rule=`${st.stkTol}|${st.stkGap}`;
-  $("#stkTitle").textContent=`연속 순매수 (${S.parts.filter((p,i)=>sel[i]==="1").join("+")})`;
-  if(!S.combos[sel]||st.stkTol||st.stkGap)$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
+  $("#stkTitle").textContent=`연속 ${buy?"매수":"매도"} (${S.parts.filter((p,i)=>sel[i]==="1").join("+")})`;
+  if(!(buy?S:S.sell)?.combos[sel]||st.stkTol||st.stkGap)$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
   streakCombo(S,sel).then(R=>{
-    if(st.D.date!==date||st.stkSel!==sel||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙이 바뀜
+    if(st.D.date!==date||st.stkSel!==sel||(st.stkSide||"buy")!==side||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙·방향이 바뀜
     if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (사모·연기금·투신으로 만든 조합과 전체 체크는, 규칙 0·0 이면 휴대폰에서도 바로 볼 수 있습니다)</div>';return}
     const C=R.combos[sel],tk=R.tk,n=st.listN;
     const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${title} 상위${rows.length}</h3></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
-      <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 순매수<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
+      <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 ${word}<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
       ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${esc(k[0])}</span><div class="code">${t}${k[2]?" · "+MK[k[2]]:""}</div></td>
-      <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · 순매도 ${skip}일 포함`:""}</span></div></td>
-      <td><div class="stack"><span>${fN(amt)}</span><span class="sub">시총 ${fN(k[1])}억</span></div></td><td class="up"><b>${fN(s,2)}</b></td>
+      <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · ${opposite} ${skip}일 포함`:""}</span></div></td>
+      <td><div class="stack"><span>${fN(amt)}</span><span class="sub">시총 ${fN(k[1])}억</span></div></td><td class="${buy?"up":"dn"}"><b>${fN(s,2)}</b></td>
       <td>${relCell(ret,d0,date)}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">해당 종목 없음</td></tr>'}</table></div></div>`};
     $("#streaks").innerHTML=tb("1일 이상 연속 · 누적 강도순",C.run,"c-warn","stk_e")+tb(`${R.confirm}일 이상 연속 · 지속 확인`,C.conf,"c-ok","stk_c");
     applySorts();
   });
 }
+$("#stkSide").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.stkSide=b.dataset.s;[...$("#stkSide").children].forEach(x=>x.classList.toggle("on",x===b));renderStreaks()};
 function setStk(sel){st.stkSel=sel;store.set("stkSel_v2",sel);renderStreaks()}
 function setRule(tol,gap){st.stkTol=Math.max(0,Math.min(1,Math.round((+tol||0)*100)/100));st.stkGap=clampInt(gap,0,5,0);store.set("stkTol",st.stkTol);store.set("stkGap",st.stkGap);renderStreaks()}
 $("#stkParts").addEventListener("change",e=>{
