@@ -381,16 +381,25 @@ async function loadIndex(bust){
   const sel=$("#date");
   sel.innerHTML=st.dates.slice().reverse().map(d=>`<option value="${d}">${d.replace(/-/g,". ")} (${"일월화수목금토"[new Date(d+"T00:00:00").getDay()]})</option>`).join("");
 }
+function latestOnOpen(){
+  return !!window.KD_ENC||matchMedia("(hover: none) and (pointer: coarse)").matches;
+}
+function initialDate(dates,hash,latest){
+  if(!dates.length)return null;
+  const want=(hash.match(/^#d(\d{8})$/)||[])[1];
+  const requested=want?want.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"):null;
+  return !latest&&dates.includes(requested)?requested:dates[dates.length-1];
+}
 async function init(){
   if(window.kdEncReady)await window.kdEncReady;  // 비밀번호 입력 대기
   if(window.kdEncLock){const b=document.createElement("button");b.className="ib";b.textContent="🔒 잠금";b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".bar-in").appendChild(b)}
-  await loadIndex(false);
+  const latest=latestOnOpen();
+  await loadIndex(latest);  // 모바일은 캐시된 날짜 목록 대신 최신 목록 확인
   if(!st.dates.length){$("#banner").hidden=false;$("#banner").textContent="데이터가 없습니다. open_dashboard.bat 으로 실행하면 데이터를 받습니다.";srvInit();return}
-  const want=(location.hash.match(/^#d(\d{8})$/)||[])[1];
-  const first=want?want.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"):st.dates[st.dates.length-1];
+  const first=initialDate(st.dates,location.hash,latest);
   $("#date").onchange=()=>go($("#date").value);
   $("#prev").onclick=()=>step(-1);$("#next").onclick=()=>step(1);
-  await go(st.dates.includes(first)?first:st.dates[st.dates.length-1]);
+  await go(first);
   staleHint();srvInit();
 }
 /* 마지막 데이터가 오래됐으면 안내 (file:// 로 연 경우 브라우저는 수집을 실행할 수 없음) */
@@ -998,6 +1007,8 @@ document.addEventListener("click",e=>{
 
 /* nav highlight */
 const secs=["market","sector","flow","appearance","streak","track"];
+// 모바일 뒤로 가기로 복원된 페이지도 시작 절차를 다시 거쳐 최신 날짜 선택
+addEventListener("pageshow",e=>{if(e.persisted&&latestOnOpen())location.reload()});
 addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
   document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur))},{passive:true});
 document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();document.getElementById(a.getAttribute("href").slice(1)).scrollIntoView({behavior:"smooth"})}));
