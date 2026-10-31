@@ -211,7 +211,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   <div class="cal-head"><button class="ib icon-btn" id="calPrev" type="button" aria-label="이전 달">‹</button><b id="calMonth" aria-live="polite"></b><button class="ib icon-btn" id="calNext" type="button" aria-label="다음 달">›</button></div>
   <div class="cal-week" aria-hidden="true"><span class="cal-red">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="cal-blue">토</span></div>
   <div class="cal-grid" id="calDays" role="grid" aria-labelledby="calMonth"></div>
-  <div class="cal-foot"><span id="calNote">자료 있는 날짜만 선택 · 노란색: 선택일·오늘</span><button class="ib" id="calClose" type="button" aria-label="달력 닫기">닫기</button></div>
+  <div class="cal-foot"><button class="ib" id="calToday" type="button" title="자료가 있는 가장 최신 날짜로 이동">오늘</button><button class="ib" id="calClose" type="button" aria-label="달력 닫기">닫기</button></div>
 </div>
 
 <main class="wrap">
@@ -532,7 +532,7 @@ function renderCalendar(focus=false){
     const label=`${r.d} ${"일월화수목금토"[r.weekday]}요일${r.holiday?" · "+r.holiday:""}${r.today?" · 오늘":""}${!r.available?" · 자료 없음":""}`;
     return `<button type="button" role="gridcell" class="cal-day${r.red?" cal-red":r.blue?" cal-blue":""}${r.outside?" outside":""}${r.selected?" selected":""}${r.today?" today":""}" data-date="${r.d}" tabindex="${r.d===cal.focus?0:-1}" aria-label="${esc(label)}" title="${esc(label)}" aria-selected="${r.selected}"${r.today?' aria-current="date"':""}${r.available?"":" disabled"}>${r.day}</button>`;
   }).join("");
-  $("#calNote").textContent=(cfg.holiday_years||[]).includes(+y)?"자료 있는 날짜만 선택 · 노란색: 선택일·오늘":"공휴일 정보 준비 전 · 자료 있는 날짜만 선택";
+  $("#calToday").disabled=!st.dates.length;
   if(focus){const b=$("#calDays").querySelector(`[data-date="${cal.focus}"]`);if(b)b.focus();else $("#calNext").focus()}
 }
 function positionCalendar(){
@@ -554,6 +554,7 @@ $("#date").onclick=()=>$("#dateCalendar").hidden?openCalendar():closeCalendar();
 $("#date").onkeydown=e=>{if(e.key==="ArrowDown"){e.preventDefault();openCalendar()}};
 $("#calPrev").onclick=()=>moveCalendarMonth(-1);$("#calNext").onclick=()=>moveCalendarMonth(1);
 $("#calClose").onclick=()=>closeCalendar();
+$("#calToday").onclick=()=>{const latest=st.dates.at(-1);if(!latest)return;closeCalendar();go(latest)};
 $("#calDays").onclick=e=>{const b=e.target.closest("button[data-date]");if(!b||b.disabled)return;closeCalendar();go(b.dataset.date)};
 $("#dateCalendar").onkeydown=e=>{
   if(e.key==="Escape"){e.preventDefault();closeCalendar();return}
