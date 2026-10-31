@@ -395,7 +395,7 @@ const jo=v=>v==null?"–":fN(v/1e6,1)+"조원";
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-/* 종목명은 기기에 맞는 네이버페이 증권 종목 페이지로 연결한다. */
+/* PC는 네이버페이 증권, iOS·Android는 나무증권의 해당 종목 현재가로 연결한다. */
 function stockUrl(t){
   let code=String(t??"").trim();
   if(/^\d{1,6}$/.test(code))code=code.padStart(6,"0");
@@ -406,12 +406,40 @@ function stockUrl(t){
 }
 function stockLink(t,n){
   const url=stockUrl(t);
+  const app=namuhUrl(t,url);
+  if(app)return `<a class="stock-link" href="${esc(app)}" data-namuh="1" data-fallback="${esc(url)}" title="${esc(n)} · 나무증권 현재가">${esc(n)}</a>`;
   return url?`<a class="stock-link" href="${url}" target="_blank" rel="noopener noreferrer" title="${esc(n)} · 네이버페이 증권 (새 탭)">${esc(n)}</a>`:esc(n);
+}
+function namuhUrl(t,web=stockUrl(t)){
+  if(!web)return null;
+  const code=web.match(/\/stock\/([0-9A-Za-z]{6})\//)[1],ua=navigator.userAgent||"";
+  // NH 공식 adc.util.js의 STK_QUOT: 화면 1210, opendata=page1^종목코드.
+  if(/Android/i.test(ua))return `intent://txrun/#Intent;scheme=txsmart;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.wooriwm.txsmart;i.RUNMODE=1;S.RUNSCREEN=1210;S.RUNOPENDATA=page1^${code};S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  if(/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return `txSmart://web/openscreen/1210/page1^${code}`;
+  return null;
 }
 function sectorStockLink(n,sector){
   const member=st.D.sectors.find(s=>s.sector===sector)?.members?.find(r=>r.n===n);
   return stockLink(member?.t,n);
 }
+
+let namuhCancel=null;
+function openNamuh(url,fallback){
+  if(namuhCancel)namuhCancel();
+  let timer=null;
+  const cancel=()=>{clearTimeout(timer);document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pagehide",cancel);if(namuhCancel===cancel)namuhCancel=null};
+  const onVisibility=()=>{if(document.visibilityState==="hidden")cancel()};
+  document.addEventListener("visibilitychange",onVisibility);
+  window.addEventListener("pagehide",cancel,{once:true});
+  namuhCancel=cancel;
+  timer=setTimeout(()=>{const visible=document.visibilityState!=="hidden";cancel();if(visible)location.assign(fallback)},2500);
+  try{location.assign(url)}catch(e){cancel();location.assign(fallback)}
+}
+document.addEventListener("click",e=>{
+  const a=e.target.closest("a.stock-link[data-namuh]");
+  if(!a||e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
+  e.preventDefault();openNamuh(a.getAttribute("href"),a.dataset.fallback);
+});
 
 /* ---------- data loading ---------- */
 function loadScript(src){if(window.kdEncLoad)return window.kdEncLoad(src);  // 휴대폰용 비공개 사이트: 암호화 파일 (enc.js)
