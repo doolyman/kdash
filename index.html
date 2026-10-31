@@ -422,7 +422,7 @@ const jo=v=>v==null?"–":fN(v/1e6,1)+"조원";
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-/* PC는 네이버페이 증권, iOS·Android는 나무증권의 해당 종목 현재가로 연결한다. */
+/* PC는 네이버페이 증권. 모바일 종목명은 나무 현재가, 종목코드는 mPOP 매매 화면. */
 function stockUrl(t){
   let code=String(t??"").trim();
   if(/^\d{1,6}$/.test(code))code=code.padStart(6,"0");
@@ -431,10 +431,10 @@ function stockUrl(t){
     (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   return mobile?`https://m.stock.naver.com/domestic/stock/${code}/total`:`https://stock.naver.com/domestic/stock/${code}/`;
 }
-function stockLink(t,n){
+function stockLink(t,n,broker="namuh"){
   const url=stockUrl(t);
-  const app=namuhUrl(t,url);
-  if(app)return `<a class="stock-link" href="${esc(app)}" data-namuh="1" data-fallback="${esc(url)}" title="${esc(n)} · 나무증권 현재가">${esc(n)}</a>`;
+  const mpop=broker==="mpop",app=mpop?mpopUrl(t,url):namuhUrl(t,url);
+  if(app)return `<a class="stock-link" href="${esc(app)}" data-${mpop?"mpop":"namuh"}="1" data-fallback="${esc(url)}" title="${esc(n)} · ${mpop?"삼성증권 mPOP 매매":"나무증권 현재가"}">${esc(n)}</a>`;
   return url?`<a class="stock-link" href="${url}" target="_blank" rel="noopener noreferrer" title="${esc(n)} · 네이버페이 증권 (새 탭)">${esc(n)}</a>`:esc(n);
 }
 function namuhUrl(t,web=stockUrl(t)){
@@ -445,27 +445,41 @@ function namuhUrl(t,web=stockUrl(t)){
   if(/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return `txSmart://web/openscreen/1210/page1^${code}`;
   return null;
 }
+function mpopUrl(t,web=stockUrl(t)){
+  if(!web)return null;
+  const code=web.match(/\/stock\/([0-9A-Za-z]{6})\//)[1],ua=navigator.userAgent||"";
+  // 삼성증권 공식 common.mobile.js + 종목 페이지 call_mPOP3: 매매 1149, 전달값은 종목코드.
+  if(/Android/i.test(ua))return `intent://S/1149/${code}#Intent;scheme=mpopapp;package=com.samsungpop.android.mpop;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  if(/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return `mpopmain://S/1149/${code}?UserID=`;
+  return null;
+}
+function stockCodeLink(t,market){
+  const code=stockUrl(t)?.match(/\/stock\/([0-9A-Za-z]{6})\//)?.[1]||String(t??"");
+  const A=window.KD_APP;
+  if(!MK[market]&&A){const i=A.T.indexOf(code);if(i>=0)market=A.M[i]}
+  return stockLink(code,code,"mpop")+(MK[market]?" · "+esc(MK[market]):"");
+}
 function sectorStockLink(n,sector){
   const member=st.D.sectors.find(s=>s.sector===sector)?.members?.find(r=>r.n===n);
   return stockLink(member?.t,n);
 }
 
-let namuhCancel=null;
-function openNamuh(url,fallback){
-  if(namuhCancel)namuhCancel();
+let stockAppCancel=null;
+function openStockApp(url,fallback){
+  if(stockAppCancel)stockAppCancel();
   let timer=null;
-  const cancel=()=>{clearTimeout(timer);document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pagehide",cancel);if(namuhCancel===cancel)namuhCancel=null};
+  const cancel=()=>{clearTimeout(timer);document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pagehide",cancel);if(stockAppCancel===cancel)stockAppCancel=null};
   const onVisibility=()=>{if(document.visibilityState==="hidden")cancel()};
   document.addEventListener("visibilitychange",onVisibility);
   window.addEventListener("pagehide",cancel,{once:true});
-  namuhCancel=cancel;
+  stockAppCancel=cancel;
   timer=setTimeout(()=>{const visible=document.visibilityState!=="hidden";cancel();if(visible)location.assign(fallback)},2500);
   try{location.assign(url)}catch(e){cancel();location.assign(fallback)}
 }
 document.addEventListener("click",e=>{
-  const a=e.target.closest("a.stock-link[data-namuh]");
+  const a=e.target.closest("a.stock-link[data-namuh],a.stock-link[data-mpop]");
   if(!a||e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
-  e.preventDefault();openNamuh(a.getAttribute("href"),a.dataset.fallback);
+  e.preventDefault();openStockApp(a.getAttribute("href"),a.dataset.fallback);
 });
 
 /* ---------- data loading ---------- */
@@ -873,7 +887,7 @@ function renderBubDetail(){
     <div class="sub">${B.from} ~ ${B.to} · ${sell?"순매도":"순매수"} 출현 ${p.x}일 · 평균 ${sell?"매도":""}강도 ${fN(p.y,2)}% · 상승확산 ${p.size}%${sec?` · 패턴 ${sec.pattern} / ${sec.badge} · 1개월 ${fP(sec.r["20"])}`:""}</div></div>
     <button class="ib" id="bubClose">닫기</button></div>
     <div class="tw scroll-y" style="max-height:480px"><table id="bubTbl"><tr><th class="l">종목</th><th>출현일수</th><th class="c">최근 출현</th><th>출현일 평균<br>합산${sell?"매도":""}강도</th><th>출현일 3기관<br><span class="sub">순매수 합 백만원</span></th><th class="l">기관별<br><span class="sub">사/연/투</span></th><th>첫 출현 후<br><span class="sub">피·닥 대비</span></th><th>5일<br><span class="sub">피·닥 대비</span></th><th>10일<br><span class="sub">피·닥 대비</span></th><th>20일<br><span class="sub">피·닥 대비</span></th><th>당일</th><th>시총<br><span class="sub">억원</span></th></tr>
-    ${p.stocks.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${tracked.has(r.t)?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${r.t}</div></td>
+    ${p.stocks.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${tracked.has(r.t)?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${stockCodeLink(r.t,r.m)}</div></td>
       <td><b>${r.app}일</b></td><td class="c">${r.last}</td><td class="${sell?"dn":"up"}">${fP(r.s_avg,2,false)}</td><td class="${cls(r.flow)}">${fN(r.flow)}</td>
       <td class="l sub">${INV.map(k=>`${INV_S[k]} <span class="${cls(r.inv[k])}">${fN(r.inv[k])}</span>`).join(" ")}</td>
       <td>${relCell(r.ret,r.first,B.to)}</td>${[["r5",5],["r10",10],["r20",20]].map(([k,n])=>`<td>${relCell(r[k],dBack(B.to,n),B.to)}</td>`).join("")}
@@ -904,7 +918,7 @@ function renderSim(){
   $("#simMeta").textContent=`${st.D.date} · ${condition} ${all.length}종목 · 합산${sell?"매도":""}강도순 · ${S.length}종목 표시 · 개수 빈칸/0·강도 빈칸은 제한 없음${sumMode?` · ${sell?"파란":"노란"} 음영: 세 기관 모두 ${word}`:""}`;
   if(!S.length){$("#simTbl").innerHTML=`<tr><td class="empty">${all.length?"입력한 조건에 맞는 종목이 없습니다.":condition+"인 종목이 없습니다."}</td></tr>`;return}
   $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th><th>3기관 합산${sell?"매도":""}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th>${INV.map(k=>`<th title="전체 순매수·순매도 종목의 강도 기준 · 금액 0은 순위 없음">${k} 순위</th><th>${k} ${sell?"매도":""}강도</th>`).join("")}</tr>`+
-    S.map(r=>`<tr class="${sumMode&&INV.every(k=>r.inv[k].amt>0)?sell?"lo3":"hi3":""}"><td class="l"><div class="nm">${stockLink(r.t,r.n)}</div><span class="code">${r.t}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
+    S.map(r=>`<tr class="${sumMode&&INV.every(k=>r.inv[k].amt>0)?sell?"lo3":"hi3":""}"><td class="l"><div class="nm">${stockLink(r.t,r.n)}</div><span class="code">${stockCodeLink(r.t,r.m)}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
     <td class="sum" data-sort="${r.s}"><div class="stack"><b class="${cls(sell?-r.s:r.s)}">${fP(r.s,4,false)}</b><span class="sub">${fN(r.amt,1)}백만원</span></div></td>
     ${flowReturnCell(r)}
     ${INV.map(k=>`${simRankCell(r.inv[k],sell?"sell":"buy")}<td data-sort="${r.inv[k].s}"><div class="stack"><span class="${cls(sell?-r.inv[k].s:r.inv[k].s)}">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}</tr>`).join("");
@@ -936,7 +950,7 @@ function renderLists(){
   $("#lists").innerHTML=INV.map(k=>`<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${k} ${w} 상위${L[k].length}</h3></div>
     <div class="scroll-y" style="max-height:640px"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
     ${L[k].map((r,i)=>`<tr class="${r.multi===3?(side==="buy"?"hi3":"lo3"):r.multi===2?(side==="buy"?"hi2":"lo2"):""}"><td class="c mut">${i+1}</td>
-      <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${r.star?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${r.t}${r.sec?" · "+esc(secOf(r.t,r.sec)):""}</div></td>
+      <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${r.star?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${stockCodeLink(r.t,r.m)}${r.sec?" · "+esc(secOf(r.t,r.sec)):""}</div></td>
       <td><div class="stack"><span>${fN(r.amt)}</span><span class="sub">시총 ${fN(r.cap)}억</span></div></td><td class="${side==="buy"?"up":"dn"}"><b>${fN(r.s,2)}</b></td>${flowReturnCell(r)}</tr>`).join("")||(st.D.lists[side][k]?'<tr><td class="empty" colspan="5">데이터 없음</td></tr>':"")}
     </table></div></div>`).join("");
 }
@@ -989,7 +1003,7 @@ function renderAppearances(){
   if(R.missingStrength)return empty("합산강도 필터에 필요한 데이터가 없습니다. 데이터 갱신(다시 계산) 후 표시됩니다.");
   $("#appMeta").textContent=`${R.dates[0]} ~ ${st.D.date} · 기준일 포함 ${R.dates.length}거래일 / 요청 ${st.appDays}거래일 · ${parts.filter((p,i)=>st.appSel[i]==="1").join("+")}${st.appMin==null?"":` · 당일 합산 ${side==="sell"?"매도":"매수"}강도 ${fN(st.appMin,2)}% 이상`} · ${R.rows.length}종목`;
   $("#appTbl").innerHTML=`<tr><th class="c">순위</th><th class="l">종목 · 섹터</th><th>출현일수</th><th class="c">가장 최근 출현</th><th class="c">첫 출현일</th><th>첫 출현일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>`+
-    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${stockLink(t,A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">이 기간에 설정 조건을 충족한 ${word} 종목이 없습니다.</td></tr>`);
+    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${stockLink(t,A.N[r.i])}</span><div class="code">${stockCodeLink(t,A.M[r.i])}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">이 기간에 설정 조건을 충족한 ${word} 종목이 없습니다.</td></tr>`);
 }
 $("#appSide").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.appSide=b.dataset.s;[...$("#appSide").children].forEach(x=>x.classList.toggle("on",x===b));renderAppearances();applySorts()};
 $("#appDays").onchange=e=>{st.appDays=clampAppDays(e.target.value);store.set("appDays",st.appDays);renderAppearances();applySorts()};
@@ -1024,7 +1038,7 @@ function renderCumulative(){
   if(R.missing)return empty("누적강도 데이터는 데이터 갱신(다시 계산) 후 표시됩니다.");
   $("#cumMeta").textContent=`${R.dates[0]} ~ ${st.D.date} · 기준일 포함 ${R.dates.length}거래일 / 요청 ${st.cumDays}거래일 · ${parts.filter((_,i)=>st.cumSel[i]==="1").join("+")} · ${R.rows.length}종목`;
   $("#cumTbl").innerHTML=`<tr><th class="c">순위</th><th class="l">종목 · 섹터</th><th>누적 ${word}<br><span class="sub">백만원 · 기준일 시총</span></th><th>누적 ${sell?"매도":"매수"}강도</th><th>기간 첫날 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>`+
-    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${stockLink(t,A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.amt}"><div class="stack"><span>${fN(r.amt,1)}</span><span class="sub">시총 ${fN(r.cap)}억</span></div></td><td data-sort="${r.s}" class="${sell?"dn":"up"}"><b>${fP(r.s,4,false)}</b></td><td data-sort="${r.ret??""}">${relCell(r.ret,R.dates[0],st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="5" class="empty">이 기간에 누적 ${word}한 종목이 없습니다.</td></tr>`);
+    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${stockLink(t,A.N[r.i])}</span><div class="code">${stockCodeLink(t,A.M[r.i])}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.amt}"><div class="stack"><span>${fN(r.amt,1)}</span><span class="sub">시총 ${fN(r.cap)}억</span></div></td><td data-sort="${r.s}" class="${sell?"dn":"up"}"><b>${fP(r.s,4,false)}</b></td><td data-sort="${r.ret??""}">${relCell(r.ret,R.dates[0],st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="5" class="empty">이 기간에 누적 ${word}한 종목이 없습니다.</td></tr>`);
 }
 $("#cumSide").onclick=e=>{const b=e.target.closest("button[data-s]");if(!b)return;st.cumSide=b.dataset.s==="sell"?"sell":"buy";[...$("#cumSide").children].forEach(x=>x.classList.toggle("on",x===b));renderCumulative();applySorts()};
 $("#cumDays").onchange=e=>{st.cumDays=clampCumDays(e.target.value);store.set("cumDays",st.cumDays);renderCumulative();applySorts()};
@@ -1066,7 +1080,7 @@ function renderStreaks(){
     const C=R.combos[sel],tk=R.tk,n=st.listN;
     const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${title} 상위${rows.length}</h3></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 ${word}<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
-      ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(t,k[0])}</span><div class="code">${t}${k[2]?" · "+MK[k[2]]:""}</div></td>
+      ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(t,k[0])}</span><div class="code">${stockCodeLink(t,k[2])}</div></td>
       <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · ${opposite} ${skip}일 포함`:""}</span></div></td>
       <td><div class="stack"><span>${fN(amt)}</span><span class="sub">시총 ${fN(k[1])}억</span></div></td><td class="${buy?"up":"dn"}"><b>${fN(s,2)}</b></td>
       <td>${relCell(ret,d0,date)}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">해당 종목 없음</td></tr>'}</table></div></div>`};
@@ -1100,7 +1114,7 @@ function renderTrack(){
     (rows.map(r=>`<tr class="click${st.cmp.includes(r.t)?" sel":""}" data-t="${r.t}">
       <td class="c">${r.start}</td><td class="c">${r.last}</td><td class="c"><b>${r.elapsed}일</b></td><td class="c"><b>${r.count}회</b></td>
       <td class="c"><div class="stack" style="align-items:center"><span class="chip ${SC[r.status]||""}">${r.status}</span><span class="sub">${esc(r.note)}</span></div></td>
-      <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${r.t}${r.m?" · "+MK[r.m]:""}</div></td>
+      <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m)}</div></td>
       <td class="l">${secSelect(r.t,r.n,r.sec)}</td>
       <td class="sum"><div class="stack"><b class="up">${fP(r.s_sum,2,false)}</b><span class="sub">${fN(r.f_sum)}백만원</span></div></td>
       <td>${pc(r.chg,1)}</td>
@@ -1156,7 +1170,7 @@ function renderSecTopDetail(){
   const box=$("#secTopDetail"),sel=st.secTopSel,group=sel&&secTopGroups[sel.group],o=sel?.side===st.side&&group?.top.find(o=>o.s===sel.sector);
   box.hidden=!o;if(!o){box.innerHTML="";return}
   const w=st.side==="buy"?"순매수":"순매도";
-  box.innerHTML=`<div class="sh"><h3>${esc(group.title)} · ${esc(o.s)} · ${w} 금액순</h3><button class="ib" id="secTopClose">닫기</button></div><div class="tw"><div class="scroll-y" style="max-height:360px"><table id="secTopStocks"><tr><th class="c">순위</th><th class="l">종목</th><th>${w} 금액(백만원)</th><th>매수·매도 강도</th></tr>${o.members.map((r,i)=>`<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${r.t}</div></td><td>${fN(r.amt)}</td><td>${fN(r.s,2)}%</td></tr>`).join("")}</table></div></div>`;
+  box.innerHTML=`<div class="sh"><h3>${esc(group.title)} · ${esc(o.s)} · ${w} 금액순</h3><button class="ib" id="secTopClose">닫기</button></div><div class="tw"><div class="scroll-y" style="max-height:360px"><table id="secTopStocks"><tr><th class="c">순위</th><th class="l">종목</th><th>${w} 금액(백만원)</th><th>매수·매도 강도</th></tr>${o.members.map((r,i)=>`<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m)}</div></td><td>${fN(r.amt)}</td><td>${fN(r.s,2)}%</td></tr>`).join("")}</table></div></div>`;
   $("#secTopClose").onclick=()=>{st.secTopSel=null;renderLists();applySorts()};
 }
 $("#secTop").onclick=e=>{const b=e.target.closest("button[data-g]");if(!b)return;const group=+b.dataset.g,sector=secTopGroups[group].top[+b.dataset.i].s;
@@ -1208,7 +1222,7 @@ function renderBT(){
   // 가로 스크롤 없이: 고정 열 너비 + 줄바꿈 (감지일은 종목 칸에 함께)
   $("#btRecent").innerHTML=`<colgroup><col style="width:13%"><col style="width:20%"><col style="width:23%">${H.map(()=>`<col style="width:${44/(H.length+1)}%">`).join("")}<col style="width:${44/(H.length+1)}%"></colgroup>
     <tr><th class="l" title="누르면 감지일순">종목<br><span class="sub">감지일 (정렬 기준)</span></th><th class="l" title="누르면 해제일순 (추적 중은 맨 끝)">추적 상태 · 해제 사유</th><th class="l" title="누르면 합산강도순">감지 사유 · 근거</th>${H.map(h=>`<th>${h}일 후<br><span class="sub">피·닥 대비</span></th>`).join("")}<th>기준일까지<br><span class="sub">피·닥 대비</span></th></tr>`+
-    (rows.map(e=>`<tr><td class="l" data-sort="${e.d}|${e.t}"><span class="nm">${stockLink(e.t,e.n)}</span><div class="code">${e.t}${e.m?" · "+MK[e.m]:""}</div><div class="sub">${e.d}</div></td>
+    (rows.map(e=>`<tr><td class="l" data-sort="${e.d}|${e.t}"><span class="nm">${stockLink(e.t,e.n)}</span><div class="code">${stockCodeLink(e.t,e.m)}</div><div class="sub">${e.d}</div></td>
       <td class="l" data-sort="${e.end&&e.end.d<=t?e.end.d:"9999-99-99"}">${endCell(e)}</td><td class="l" data-sort="${e.s3??""}">${why(e)}</td>
       ${H.map(h=>{const v=e.h[h];return `<td>${!v||v[0]>t?'<span class="mut">대기</span>':relCell(ret(e,v[0],v[1]),e.d,v[0])}</td>`}).join("")}
       <td>${relCell(ret(e,t,now[e.t]),e.d,t)}</td></tr>`).join("")||`<tr><td colspan="${4+H.length}" class="empty">이 기간에 감지된 종목이 없습니다.</td></tr>`);
