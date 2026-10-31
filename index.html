@@ -45,11 +45,18 @@ button,select,input,textarea{font:inherit;color:inherit}
 .bar-in{max-width:1440px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 .brand{font-weight:700;font-size:17px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:8px}
 .brand small{font-weight:500;font-size:12px;color:var(--muted)}
-.datebox{display:flex;align-items:center;gap:6px}
-.datebox select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);min-width:150px}
+.datebox{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+.datebox select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);width:150px;min-width:0}
+.datebox .ib{flex:0 0 auto}
 .ib{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;cursor:pointer}
 .ib:hover{border-color:var(--accent)}
 .ib:disabled{opacity:.4;cursor:default}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;color:var(--muted)}
+.icon-btn:hover{color:var(--accent)}
+.icon-btn svg{width:16px;height:16px}
+#upd[aria-busy="true"] svg{animation:sp 1s linear infinite}
+#upd[data-state="error"]{color:var(--risk)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 nav.tabs{display:flex;gap:4px;overflow-x:auto;margin-left:auto}
 nav.tabs a{padding:6px 12px;border-radius:999px;color:var(--muted);text-decoration:none;font-weight:600;white-space:nowrap}
 nav.tabs a:hover,nav.tabs a.on{background:var(--accent-soft);color:var(--accent)}
@@ -161,11 +168,10 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 #btRecent .chip{white-space:normal}
 .num{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600}
 .num input{width:62px;padding:5px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-align:right}
-.upd{display:flex;align-items:center;gap:8px;min-width:0}
-.upd .sub{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upd{display:inline-flex;align-items:center;flex:0 0 auto}
 .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}#upd[aria-busy="true"] svg{animation:none}}
 </style>
 
 <header class="bar">
@@ -175,8 +181,8 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <button class="ib" id="prev" aria-label="이전 거래일">◀</button>
       <select id="date" aria-label="분석 기준일"></select>
       <button class="ib" id="next" aria-label="다음 거래일">▶</button>
+      <span class="upd" id="updBox"><button class="ib icon-btn" id="upd" type="button" aria-label="새로고침" title="새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11a9 9 0 0 1 15.4-6.4L21 7M21 2v5h-5M21 13a9 9 0 0 1-15.4 6.4L3 17M3 22v-5h5"/></svg></button><span class="sr-only" id="updMsg" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </div>
-    <div class="upd" id="updBox" hidden><button class="ib" id="upd">데이터 갱신</button><span class="sub" id="updMsg"></span></div>
     <nav class="tabs" id="tabs">
       <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">최다 출현</a><a href="#cumulative">누적강도</a><a href="#streak">연속 매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
     </nav>
@@ -448,7 +454,7 @@ function initialDate(dates,hash,latest){
 }
 async function init(){
   if(window.kdEncReady)await window.kdEncReady;  // 비밀번호 입력 대기
-  if(window.kdEncLock){const b=document.createElement("button");b.className="ib";b.textContent="🔒";b.setAttribute("aria-label","잠금");b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".datebox").appendChild(b)}
+  if(window.kdEncLock){const b=document.createElement("button");b.className="ib icon-btn";b.textContent="🔒";b.setAttribute("aria-label","잠금");b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".datebox").insertBefore(b,$("#updBox"))}
   const latest=latestOnOpen();
   await loadIndex(latest);  // 모바일은 캐시된 날짜 목록 대신 최신 목록 확인
   if(!st.dates.length){$("#banner").hidden=false;$("#banner").textContent="데이터가 없습니다. open_dashboard.bat 으로 실행하면 데이터를 받습니다.";srvInit();return}
@@ -470,19 +476,23 @@ function staleHint(){
 /* ---------- 로컬 실행기(serve.py)와 연결: 갱신 버튼 · 진행 표시 · 끝나면 자동 새로고침 ---------- */
 let srvLastFinish=null,srvTimer=null;
 async function srvInit(){
+  $("#upd").onclick=()=>location.reload();
   if(!location.protocol.startsWith("http"))return;
   let s;try{const r=await fetch("/api/status",{cache:"no-store"});if(!r.ok)return;s=await r.json()}catch(e){return}
-  $("#updBox").hidden=false;srvLastFinish=s.finished;
+  srvLastFinish=s.finished;
   $("#upd").onclick=async()=>{try{await fetch("/api/update",{method:"POST"})}catch(e){}srvPoll()};
   srvShow(s);if(s.running)srvPoll();
 }
 function srvShow(s){
   const m=$("#updMsg"),b=$("#upd");b.disabled=s.running;
-  if(s.running){m.innerHTML=`<span class="spin"></span> ${esc(s.last||"갱신 중")}`;m.title=s.last||""}
-  else if(s.finished){m.textContent=(s.code===0?"갱신 완료 ":"갱신 실패(로그 확인) ")+new Date(s.finished*1000).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});m.title=s.last||""}
+  b.setAttribute("aria-busy",s.running?"true":"false");
+  b.dataset.state=!s.running&&s.finished&&s.code!==0?"error":"";
+  const status=s.running?(s.last||"갱신 중"):s.finished?(s.code===0?"갱신 완료 ":"갱신 실패(로그 확인) ")+new Date(s.finished*1000).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):"";
+  m.textContent=status;
+  b.title="데이터 갱신"+(status?" · "+status:"");
+  b.setAttribute("aria-label",s.running?"데이터 갱신 중":"데이터 갱신");
   // KRX 차단 감지 시 화면 위에 알림 (수집은 이미 멈춘 상태)
   if((s.log||[]).some(l=>l.includes("⛔")))alertBox("KRX가 이 PC의 IP를 차단 중이라 새 데이터 수집을 멈췄습니다 (KRX 안내: 1일 접속 제한). 차단이 풀린 뒤 다시 실행하면 이어서 받습니다. 지금 화면은 기존 데이터입니다.");
-  else m.textContent="";
 }
 async function srvPoll(){
   clearTimeout(srvTimer);
@@ -765,9 +775,10 @@ function renderSim(){
   const S=st.simN?filtered.slice(0,st.simN):filtered;
   $("#simMeta").textContent=`${st.D.date} · ${condition} ${all.length}종목 · 합산${sell?"매도":""}강도순 · ${S.length}종목 표시 · 개수 빈칸/0·강도 빈칸은 제한 없음${sumMode?` · ${sell?"파란":"노란"} 음영: 세 기관 모두 ${word}`:""}`;
   if(!S.length){$("#simTbl").innerHTML=`<tr><td class="empty">${all.length?"입력한 조건에 맞는 종목이 없습니다.":condition+"인 종목이 없습니다."}</td></tr>`;return}
-  $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th><th>3기관 합산${sell?"매도":""}강도</th>${INV.map(k=>`<th title="전체 순매수·순매도 종목의 강도 기준 · 금액 0은 순위 없음">${k} 순위</th><th>${k} ${sell?"매도":""}강도</th>`).join("")}</tr>`+
+  $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th><th>3기관 합산${sell?"매도":""}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th>${INV.map(k=>`<th title="전체 순매수·순매도 종목의 강도 기준 · 금액 0은 순위 없음">${k} 순위</th><th>${k} ${sell?"매도":""}강도</th>`).join("")}</tr>`+
     S.map(r=>`<tr class="${sumMode&&INV.every(k=>r.inv[k].amt>0)?sell?"lo3":"hi3":""}"><td class="l"><div class="nm">${stockLink(r.t,r.n)}</div><span class="code">${r.t}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
     <td class="sum" data-sort="${r.s}"><div class="stack"><b class="${cls(sell?-r.s:r.s)}">${fP(r.s,4,false)}</b><span class="sub">${fN(r.amt,1)}백만원</span></div></td>
+    ${flowReturnCell(r)}
     ${INV.map(k=>`${simRankCell(r.inv[k],sell?"sell":"buy")}<td data-sort="${r.inv[k].s}"><div class="stack"><span class="${cls(sell?-r.inv[k].s:r.inv[k].s)}">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}</tr>`).join("");
 }
 function simRankCell(v,side="buy"){const opposite=v.amt<0,rank=opposite?v.sell_rank:v.rank;return `<td data-sort="${rank==null?"":opposite?-rank:rank}"><b>${rank==null?"–":(opposite?(side==="sell"?"매수 ":"매도 "):"")+rank+"위"}</b></td>`}
