@@ -317,13 +317,14 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   <section class="sec" id="appearance">
     <div class="sh"><h2 id="appTitle">순매수 최다 출현</h2>
       <div class="ctrl"><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
+      <label class="num">당일 합산강도 <input type="number" id="appMin" step="0.01" inputmode="decimal" placeholder="제한 없음" style="width:84px">% 이상</label>
       <span class="meta">전체 종목 · 금액·순위 제한 없음</span>
       <div class="seg" id="appSide"><button data-s="buy" class="on">순매수</button><button data-s="sell">순매도</button></div></div>
     </div>
     <div class="ctrl" id="appParts" style="margin-bottom:8px"></div>
     <div class="sub" id="appMeta" style="margin-bottom:8px"></div>
     <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="appTbl"></table></div></div>
-    <div class="muted-note">선택한 기관 중 하나라도 해당 방향으로 순매수·순매도하면 하루 1회 · 출현일수 내림차순 · 최근 출현은 선택한 기준일부터 거래일로 계산 · 수익률은 조회 기간 안의 종목별 첫 출현일 종가 기준</div>
+    <div class="muted-note">선택한 기관 중 하나라도 해당 방향이면 하루 1회 · 강도 입력 시 해당 날짜의 선택 기관 순매수·순매도를 상계한 합계 ÷ 당일 시총 기준으로 추가 필터(순매도는 부호 반전) · 빈칸은 기존 집계 · 출현일수 내림차순 · 최근 출현은 기준일부터 거래일로 계산 · 수익률은 조건을 충족한 첫 출현일 종가 기준</div>
   </section>
 
   <!-- ================= 누적강도 ================= -->
@@ -409,6 +410,7 @@ function simFilterValue(v,integer=false){const n=Number(v);return Number.isFinit
 function simStrengthValue(v){if(v==null||String(v).trim()==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 st.simN=simFilterValue(store.get("simN",0),true);
 st.simMin=simStrengthValue(store.get("simMin_v2",store.get("simMin",0)||null));
+st.appMin=simStrengthValue(store.get("appMin_v1",null));
 st.simMode=["sim","sum","net"].includes(store.get("simMode_v2","sum"))?store.get("simMode_v2","sum"):"sum";
 
 /* ---------- format ---------- */
@@ -941,14 +943,26 @@ function renderLists(){
 $("#sideSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.side=b.dataset.s;[...$("#sideSeg").children].forEach(x=>x.classList.toggle("on",x===b));renderLists();applySorts()};
 $("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||200,50);e.target.value=st.listN;store.set("listN_v2",st.listN);renderLists();renderStreaks();applySorts()};
 
-/* 최다 출현: 전체 종목의 7개 기관 조합을 저장, 조회 기간만 화면에서 적용 */
-function appearanceCalc(A,date,sel,days,side="buy"){
+/* 최다 출현: 전체 종목·조회 기간·선택 기관의 당일 합산강도 기준을 적용한다. */
+function appearanceCalc(A,date,sel,days,side="buy",minStrength=null){
   const dates=A.dates.filter(d=>d<=date),end=dates.length-1;
   if(end<0||dates[end]!==date)return {dates:[],rows:[]};
   const windowDates=dates.slice(-days),counts=new Map();
+  const applyMin=minStrength!=null&&String(minStrength).trim()!==""&&Number.isFinite(Number(minStrength));
+  const selected=[...sel].flatMap((bit,i)=>bit==="1"?[i]:[]),sign=side==="sell"?-1:1,scale=A.flow_scale||10;
   for(const d of windowDates){
     const combos=side==="sell"?A.days[d]?.sell_combos:A.days[d]?.combos;
+    let totals;
+    if(applyMin){
+      const day=A.days[d];
+      if(!Array.isArray(day?.flows)||!Array.isArray(day?.cap))return {dates:windowDates,rows:[],missingStrength:true};
+      totals=new Map(day.flows.map(([i,...flows])=>[i,selected.reduce((sum,k)=>sum+(flows[k]||0),0)]));
+    }
     for(const [i] of combos?.[sel]||[]){
+      if(applyMin){
+        const cap=A.days[d].cap[i];
+        if(!(cap>0)||!Number.isFinite(cap)||sign*(totals.get(i)||0)/scale/cap<Number(minStrength))continue;
+      }
       const row=counts.get(i)||{i,count:0,first:d,last:d};
       row.count++;row.last=d;counts.set(i,row);
     }
@@ -965,18 +979,21 @@ function renderAppearances(){
   const side=st.appSide||"buy",word=side==="buy"?"순매수":"순매도";
   $("#appTitle").textContent=`${word} 최다 출현`;
   $("#appDays").value=st.appDays;
+  $("#appMin").value=st.appMin??"";
   $("#appParts").innerHTML=parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.appSel[i]==="1"?"checked":""} style="width:auto"> ${esc(p)}</label>`).join("");
   const empty=m=>{$("#appMeta").textContent="";$("#appTbl").innerHTML=`<tr><td class="empty">${m}</td></tr>`};
   if(!A||!A.days[st.D.date])return empty("최다 출현 데이터가 없습니다. 다음 데이터 계산 후 표시됩니다.");
   if(side==="sell"&&!A.days[st.D.date].sell_combos)return empty("순매도 최다 출현 데이터는 데이터 갱신(다시 계산) 후 표시됩니다.");
   if(!st.appSel.includes("1"))return empty("수급 주체를 하나 이상 선택하세요.");
-  const R=appearanceCalc(A,st.D.date,st.appSel,st.appDays,side);
-  $("#appMeta").textContent=`${R.dates[0]} ~ ${st.D.date} · 기준일 포함 ${R.dates.length}거래일 / 요청 ${st.appDays}거래일 · ${parts.filter((p,i)=>st.appSel[i]==="1").join("+")} · ${R.rows.length}종목`;
+  const R=appearanceCalc(A,st.D.date,st.appSel,st.appDays,side,st.appMin);
+  if(R.missingStrength)return empty("합산강도 필터에 필요한 데이터가 없습니다. 데이터 갱신(다시 계산) 후 표시됩니다.");
+  $("#appMeta").textContent=`${R.dates[0]} ~ ${st.D.date} · 기준일 포함 ${R.dates.length}거래일 / 요청 ${st.appDays}거래일 · ${parts.filter((p,i)=>st.appSel[i]==="1").join("+")}${st.appMin==null?"":` · 당일 합산 ${side==="sell"?"매도":"매수"}강도 ${fN(st.appMin,2)}% 이상`} · ${R.rows.length}종목`;
   $("#appTbl").innerHTML=`<tr><th class="c">순위</th><th class="l">종목 · 섹터</th><th>출현일수</th><th class="c">가장 최근 출현</th><th class="c">첫 출현일</th><th>첫 출현일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>`+
-    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${stockLink(t,A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">이 기간에 ${word}한 종목이 없습니다.</td></tr>`);
+    (R.rows.map((r,j)=>{const t=A.T[r.i],sec=secOf(t,A.sec[r.i]);return `<tr><td class="c mut">${j+1}</td><td class="l"><span class="nm">${stockLink(t,A.N[r.i])}</span><div class="code">${t}${A.M[r.i]?" · "+MK[A.M[r.i]]:""}</div><div class="sub">${esc(sec||"미지정")}</div></td><td data-sort="${r.count}"><b>${r.count}일</b><div class="sub">${fN(r.count/R.dates.length*100,1)}%</div></td><td class="c" data-sort="${-r.ago}"><span class="chip ${r.ago===0?"c-up":""}">${r.ago===0?"오늘":r.ago+"일 전"}</span><div class="sub">${r.last}</div></td><td class="c">${r.first}</td><td data-sort="${r.ret??""}">${relCell(r.ret,r.first,st.D.date)}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">이 기간에 설정 조건을 충족한 ${word} 종목이 없습니다.</td></tr>`);
 }
 $("#appSide").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.appSide=b.dataset.s;[...$("#appSide").children].forEach(x=>x.classList.toggle("on",x===b));renderAppearances();applySorts()};
 $("#appDays").onchange=e=>{st.appDays=clampAppDays(e.target.value);store.set("appDays",st.appDays);renderAppearances();applySorts()};
+$("#appMin").onchange=e=>{st.appMin=simStrengthValue(e.target.value);e.target.value=st.appMin??"";store.set("appMin_v1",st.appMin);renderAppearances();applySorts()};
 $("#appParts").onchange=e=>{if(!e.target.matches("input[data-i]"))return;const bits=st.appSel.split("");bits[+e.target.dataset.i]=e.target.checked?"1":"0";st.appSel=bits.join("");store.set("appSel",st.appSel);renderAppearances();applySorts()};
 /* 누적강도: 전체 수급 이력에서 선택한 기관의 기간 순매수액을 기준일 시총으로 나눈다. */
 function cumulativeCalc(A,date,sel,days,side="buy"){
