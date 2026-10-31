@@ -765,10 +765,10 @@ function renderSim(){
   const S=st.simN?filtered.slice(0,st.simN):filtered;
   $("#simMeta").textContent=`${st.D.date} · ${condition} ${all.length}종목 · 합산${sell?"매도":""}강도순 · ${S.length}종목 표시 · 개수 빈칸/0·강도 빈칸은 제한 없음${sumMode?` · ${sell?"파란":"노란"} 음영: 세 기관 모두 ${word}`:""}`;
   if(!S.length){$("#simTbl").innerHTML=`<tr><td class="empty">${all.length?"입력한 조건에 맞는 종목이 없습니다.":condition+"인 종목이 없습니다."}</td></tr>`;return}
-  $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th>${INV.map(k=>`<th title="전체 순매수·순매도 종목의 강도 기준 · 금액 0은 순위 없음">${k} 순위</th><th>${k} ${sell?"매도":""}강도</th>`).join("")}<th>3기관 합산${sell?"매도":""}강도</th></tr>`+
+  $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th><th>3기관 합산${sell?"매도":""}강도</th>${INV.map(k=>`<th title="전체 순매수·순매도 종목의 강도 기준 · 금액 0은 순위 없음">${k} 순위</th><th>${k} ${sell?"매도":""}강도</th>`).join("")}</tr>`+
     S.map(r=>`<tr class="${sumMode&&INV.every(k=>r.inv[k].amt>0)?sell?"lo3":"hi3":""}"><td class="l"><div class="nm">${stockLink(r.t,r.n)}</div><span class="code">${r.t}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
-    ${INV.map(k=>`${simRankCell(r.inv[k],sell?"sell":"buy")}<td data-sort="${r.inv[k].s}"><div class="stack"><span class="${cls(sell?-r.inv[k].s:r.inv[k].s)}">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}
-    <td class="sum" data-sort="${r.s}"><div class="stack"><b class="${cls(sell?-r.s:r.s)}">${fP(r.s,4,false)}</b><span class="sub">${fN(r.amt,1)}백만원</span></div></td></tr>`).join("");
+    <td class="sum" data-sort="${r.s}"><div class="stack"><b class="${cls(sell?-r.s:r.s)}">${fP(r.s,4,false)}</b><span class="sub">${fN(r.amt,1)}백만원</span></div></td>
+    ${INV.map(k=>`${simRankCell(r.inv[k],sell?"sell":"buy")}<td data-sort="${r.inv[k].s}"><div class="stack"><span class="${cls(sell?-r.inv[k].s:r.inv[k].s)}">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}</tr>`).join("");
 }
 function simRankCell(v,side="buy"){const opposite=v.amt<0,rank=opposite?v.sell_rank:v.rank;return `<td data-sort="${rank==null?"":opposite?-rank:rank}"><b>${rank==null?"–":(opposite?(side==="sell"?"매수 ":"매도 "):"")+rank+"위"}</b></td>`}
 function setSimMode(mode){st.simMode=["sim","sum","net"].includes(mode)?mode:"sum";store.set("simMode_v2",st.simMode);renderSim();applySorts()}
