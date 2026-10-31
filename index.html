@@ -418,7 +418,7 @@ function loadScript(src){if(window.kdEncLoad)return window.kdEncLoad(src);  // �
   return new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=()=>{s.remove();ok()};s.onerror=()=>{s.remove();no()};document.head.appendChild(s)})}
 async function loadIndex(bust){
   const q=bust?"?v="+Date.now():"";
-  window.KD_DATES=null;
+  window.KD_DATES=null;window.KD_GENERATED=null;
   try{await loadScript(st.src+"dates.js"+q)}catch(e){}
   if(!window.KD_DATES||!window.KD_DATES.length){
     if(st.src==="data/"){
@@ -543,7 +543,8 @@ $("#ovClear").onclick=()=>{overrides={};store.set("ov",overrides);renderOv();ren
 /* ---------- render ---------- */
 function render(){
   const D=st.D;
-  $("#gen").textContent=`생성 ${D.generated} · 저장 ${D.n_days_stored}거래일`;
+  $("#gen").textContent=`생성 ${window.KD_GENERATED||D.generated} · 저장 ${D.n_days_stored}거래일`;
+  $("#gen").title=`화면·로직·데이터의 마지막 변경 반영 시각 · 선택 거래일 자료 계산: ${D.generated}`;
   history.replaceState(null,"","#d"+D.date.replace(/-/g,""));
   renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderTrack();renderBT();renderOv();applySorts();
 }
