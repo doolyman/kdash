@@ -252,7 +252,12 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 수급 ================= -->
   <section class="sec" id="flow">
-    <div class="sh"><h2>당일 3기관 동시수급</h2><span class="meta" id="simMeta"></span></div>
+    <div class="sh"><h2>당일 3기관 동시수급</h2>
+      <div class="ctrl">
+        <label class="num">표시 <input type="number" id="simN" min="0" step="1" inputmode="numeric" placeholder="전체">개</label>
+        <label class="num">합산강도 <input type="number" id="simMin" min="0" step="0.01" inputmode="decimal" placeholder="제한 없음" style="width:84px">% 이상</label>
+      </div></div>
+    <div class="muted-note" id="simMeta" style="margin-bottom:8px"></div>
     <div class="tw"><table id="simTbl"></table></div>
 
     <div class="sh" style="margin-top:22px"><h2 id="listTitle">수급 주체별 상위</h2>
@@ -337,13 +342,16 @@ const INV=["사모","연기금","투신"], INV_S={"사모":"사","연기금":"�
 const MK={KS:"코스피",KQ:"코스닥"};
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem("kd_"+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem("kd_"+k,JSON.stringify(v))}catch(e){}}};
-const st={src:"data/",dates:[],date:null,D:null,side:"buy",appSide:"buy",stkSide:"buy",slots:[],slot:0,bubSide:"b",bubW:null,bubTop:null,bubOff:new Set(),fundN:0,tvN:0,cmp:[],trkF:null,trkM:null,listN:null,btN:null,stkSel:null};
+const st={src:"data/",dates:[],date:null,D:null,side:"buy",appSide:"buy",stkSide:"buy",slots:[],slot:0,bubSide:"b",bubW:null,bubTop:null,bubOff:new Set(),fundN:0,tvN:0,cmp:[],trkF:null,trkM:null,listN:null,simN:0,simMin:0,btN:null,stkSel:null};
 const charts={};
 let overrides=store.get("ov",{});
 st.appDays=clampAppDays(store.get("appDays",30));
 st.appSel=/^[01]{3}$/.test(store.get("appSel","010"))?store.get("appSel","010"):"010";
 function clampAppDays(v){const n=parseInt(v,10);return Number.isFinite(n)?Math.max(1,n):30}
 const clampInt=(v,lo,hi,d)=>{v=parseInt(v,10);return isNaN(v)?d:Math.max(lo,Math.min(hi,v))};
+function simFilterValue(v,integer=false){const n=Number(v);return Number.isFinite(n)&&n>0?(integer?Math.floor(n):n):0}
+st.simN=simFilterValue(store.get("simN",0),true);
+st.simMin=simFilterValue(store.get("simMin",0));
 
 /* ---------- format ---------- */
 const fN=(v,d=0)=>v==null||isNaN(v)?"–":Number(v).toLocaleString("ko-KR",{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -380,6 +388,7 @@ async function loadIndex(bust){
   st.bubTop??=clampInt(store.get("bubTop",cfg.bub_top||30),1,300,30);
   $("#listN").max=cfg.top_n||200;$("#bubWinN").max=cfg.bub_max||120;
   $("#listN").value=st.listN;$("#bubWinN").value=st.bubW;$("#bubTopN").value=st.bubTop;
+  $("#simN").value=st.simN||"";$("#simMin").value=st.simMin||"";
   const sel=$("#date");
   sel.innerHTML=st.dates.slice().reverse().map(d=>`<option value="${d}">${d.replace(/-/g,". ")} (${"일월화수목금토"[new Date(d+"T00:00:00").getDay()]})</option>`).join("");
 }
@@ -697,20 +706,19 @@ $("#bubSide").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.bub
 $("#bubCls").onclick=e=>{const b=e.target.closest("button");if(!b)return;const k=b.dataset.k;st.bubOff.has(k)?st.bubOff.delete(k):st.bubOff.add(k);renderBubble()};
 
 /* ===== 수급 ===== */
-/* 3기관 동시수급: 화면의 '상위 N' 입력값 기준 교집합 (매집 감지는 설정값 상위20 그대로) */
+/* 3기관 동시수급: 전체 종목에서 모두 순매수, 독립적인 개수·합산강도 필터 */
 function renderSim(){
-  const n=st.listN,L=st.D.lists.buy,rank={};
-  INV.forEach(k=>{rank[k]={};(L[k]||[]).slice(0,n).forEach((r,i)=>rank[k][r.t]={rank:i+1,s:r.s,amt:r.amt,row:r})});
-  const S=Object.keys(rank[INV[0]]).filter(t=>INV.every(k=>rank[k][t])).map(t=>{const r=rank[INV[0]][t].row;
-    return {t,n:r.n,sec:r.sec,inv:Object.fromEntries(INV.map(k=>[k,rank[k][t]])),s:INV.reduce((a,k)=>a+(rank[k][t].s||0),0),amt:INV.reduce((a,k)=>a+(rank[k][t].amt||0),0)}})
-    .sort((a,b)=>b.s-a.s);
-  $("#simMeta").textContent=`${st.D.date} · 사모·연기금·투신 순매수 상위${n} 교집합 ${S.length}종목 · 매집 감지는 상위${(window.KD_CFG||{}).detect_top||20} 기준`;
-  if(!S.length){$("#simTbl").innerHTML=`<tr><td class="empty">세 기관이 동시에 순매수 상위${n}에 넣은 종목이 없습니다. 위 '상위' 숫자를 늘려 보세요.</td></tr>`;return}
-  $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th>${INV.map(k=>`<th>${k} 순위</th><th>${k} 강도</th>`).join("")}<th>3기관 합산강도</th></tr>`+
+  const all=st.D.simul_all||[],filtered=all.filter(r=>r.s>=st.simMin).sort((a,b)=>b.s-a.s);
+  const S=st.simN?filtered.slice(0,st.simN):filtered;
+  $("#simMeta").textContent=`${st.D.date} · 전체 종목 중 사모·연기금·투신 모두 순매수 ${all.length}종목 · 합산강도순 · ${S.length}종목 표시 · 입력을 비우거나 0이면 제한 없음`;
+  if(!S.length){$("#simTbl").innerHTML=`<tr><td class="empty">${all.length?"입력한 조건에 맞는 종목이 없습니다.":"세 기관이 모두 순매수한 종목이 없습니다."}</td></tr>`;return}
+  $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th>${INV.map(k=>`<th title="전체 순매수 종목의 매수강도 기준">${k} 순위</th><th>${k} 강도</th>`).join("")}<th>3기관 합산강도</th></tr>`+
     S.map(r=>`<tr><td class="l"><div class="nm">${esc(r.n)}</div><span class="code">${r.t}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
-    ${INV.map(k=>`<td><b>${r.inv[k].rank}위</b></td><td><div class="stack"><span class="up">${fP(r.inv[k].s,2,false)}</span><span class="sub">${fN(r.inv[k].amt)}백만원</span></div></td>`).join("")}
-    <td class="sum"><div class="stack"><b class="up">${fP(r.s,2,false)}</b><span class="sub">${fN(r.amt)}백만원</span></div></td></tr>`).join("");
+    ${INV.map(k=>`<td data-sort="${r.inv[k].rank}"><b>${r.inv[k].rank}위</b></td><td data-sort="${r.inv[k].s}"><div class="stack"><span class="up">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}
+    <td class="sum" data-sort="${r.s}"><div class="stack"><b class="up">${fP(r.s,4,false)}</b><span class="sub">${fN(r.amt,1)}백만원</span></div></td></tr>`).join("");
 }
+$("#simN").onchange=e=>{st.simN=simFilterValue(e.target.value,true);e.target.value=st.simN||"";store.set("simN",st.simN);renderSim();applySorts()};
+$("#simMin").onchange=e=>{st.simMin=simFilterValue(e.target.value);e.target.value=st.simMin||"";store.set("simMin",st.simMin);renderSim();applySorts()};
 function flowReturnCell(r,D=st.D){
   const ret=r.r1??D.bub_now?.[r.t]?.[1]??null;
   const excess=m=>ret==null||D.market?.index?.[m]?.r1==null?null:ret-D.market.index[m].r1;
@@ -736,7 +744,7 @@ function renderLists(){
     </table></div></div>`).join("");
 }
 $("#sideSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.side=b.dataset.s;[...$("#sideSeg").children].forEach(x=>x.classList.toggle("on",x===b));renderLists();applySorts()};
-$("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||200,50);e.target.value=st.listN;store.set("listN_v2",st.listN);renderSim();renderLists();renderAppearances();renderStreaks();applySorts()};
+$("#listN").onchange=e=>{st.listN=clampInt(e.target.value,1,+e.target.max||200,50);e.target.value=st.listN;store.set("listN_v2",st.listN);renderLists();renderAppearances();renderStreaks();applySorts()};
 
 /* 최다 출현: 7개 기관 조합의 날짜별 순위를 미리 저장, 조회 기간·상위 개수는 화면에서 적용 */
 function appearanceCalc(A,date,sel,n,days,side="buy"){
