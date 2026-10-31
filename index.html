@@ -46,7 +46,26 @@ button,select,input,textarea{font:inherit;color:inherit}
 .brand{font-weight:700;font-size:17px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:8px}
 .brand small{font-weight:500;font-size:12px;color:var(--muted)}
 .datebox{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}
-.datebox select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);width:150px;min-width:0}
+.date-trigger{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);width:174px;min-width:0;cursor:pointer;white-space:nowrap;font-size:13px}
+.date-trigger svg{width:14px;height:14px;color:var(--muted);flex:none}
+.date-trigger[aria-expanded="true"]{border-color:var(--accent)}
+#dateLabel{overflow:hidden;text-overflow:ellipsis}
+.calendar{position:fixed;z-index:60;width:min(308px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 12px 36px #0003}
+.calendar[hidden]{display:none}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-head b{font-size:15px}
+.cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
+.cal-week{margin-bottom:5px;font-size:12px;color:var(--muted)}
+.cal-day{height:35px;min-width:0;padding:0;border:1px solid transparent;border-radius:7px;background:none;color:var(--fg);font-size:13px;cursor:pointer}
+.cal-red{color:var(--up)}.cal-blue{color:var(--down)}
+.cal-day.outside{opacity:.4}
+.cal-day:disabled{cursor:default;opacity:.5}
+.cal-day:not(:disabled):hover{border-color:var(--accent);background:var(--accent-soft)}
+.cal-day.selected,.cal-day.today{background:color-mix(in srgb,#f2c94c 38%,var(--panel));font-weight:700}
+.cal-day.today{box-shadow:inset 0 0 0 1px var(--warn)}
+.cal-day.today:disabled{opacity:1}
+.cal-day.selected{border-color:var(--warn)}
+.cal-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:11px;color:var(--muted)}
 .datebox .ib{flex:0 0 auto}
 .ib{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;cursor:pointer}
 .ib:hover{border-color:var(--accent)}
@@ -179,7 +198,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="brand">기관 수급 레이더 <small id="gen"></small></div>
     <div class="datebox">
       <button class="ib" id="prev" aria-label="이전 거래일">◀</button>
-      <select id="date" aria-label="분석 기준일"></select>
+      <button class="date-trigger" id="date" type="button" aria-label="분석 기준일 달력 열기" aria-haspopup="dialog" aria-controls="dateCalendar" aria-expanded="false"><span id="dateLabel">날짜 선택</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></button>
       <button class="ib" id="next" aria-label="다음 거래일">▶</button>
       <span class="upd" id="updBox"><button class="ib icon-btn" id="upd" type="button" aria-label="새로고침" title="새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11a9 9 0 0 1 15.4-6.4L21 7M21 2v5h-5M21 13a9 9 0 0 1-15.4 6.4L3 17M3 22v-5h5"/></svg></button><span class="sr-only" id="updMsg" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </div>
@@ -188,6 +207,12 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </nav>
   </div>
 </header>
+<div class="calendar" id="dateCalendar" role="dialog" aria-label="분석 기준일 선택" hidden>
+  <div class="cal-head"><button class="ib icon-btn" id="calPrev" type="button" aria-label="이전 달">‹</button><b id="calMonth" aria-live="polite"></b><button class="ib icon-btn" id="calNext" type="button" aria-label="다음 달">›</button></div>
+  <div class="cal-week" aria-hidden="true"><span class="cal-red">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="cal-blue">토</span></div>
+  <div class="cal-grid" id="calDays" role="grid" aria-labelledby="calMonth"></div>
+  <div class="cal-foot"><span id="calNote">자료 있는 날짜만 선택 · 노란색: 선택일·오늘</span><button class="ib" id="calClose" type="button" aria-label="달력 닫기">닫기</button></div>
+</div>
 
 <main class="wrap">
   <div id="banner" class="banner" hidden></div>
@@ -468,9 +493,80 @@ async function loadIndex(bust){
   $("#listN").max=cfg.top_n||200;$("#bubWinN").max=cfg.bub_max||120;
   $("#listN").value=st.listN;$("#bubWinN").value=st.bubW;$("#bubTopN").value=st.bubTop;
   $("#simN").value=st.simN||"";$("#simMin").value=st.simMin??"";
-  const sel=$("#date");
-  sel.innerHTML=st.dates.slice().reverse().map(d=>`<option value="${d}">${d.replace(/-/g,". ")} (${"일월화수목금토"[new Date(d+"T00:00:00").getDay()]})</option>`).join("");
+  $("#date").disabled=!st.dates.length;
+  updateDateButton();
 }
+
+/* ---------- 월별 날짜 선택 달력 ---------- */
+const cal={month:"",focus:""};
+function kstToday(){
+  const p=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function calendarDate(date){return date.toISOString().slice(0,10)}
+function shiftCalendarMonth(month,step){const [y,m]=month.split("-").map(Number);return calendarDate(new Date(Date.UTC(y,m-1+step,1))).slice(0,7)}
+function calendarRows(month,dates,selected,today,holidays){
+  const [year,m]=month.split("-").map(Number),first=new Date(Date.UTC(year,m-1,1)),start=first.getUTCDate()-first.getUTCDay(),available=new Set(dates);
+  return Array.from({length:42},(_,i)=>{
+    const date=new Date(Date.UTC(year,m-1,start+i)),d=calendarDate(date),weekday=date.getUTCDay(),holiday=holidays[d]||"";
+    return {d,day:date.getUTCDate(),weekday,holiday,red:!!holiday||weekday===0,blue:!holiday&&weekday===6,
+      outside:d.slice(0,7)!==month,available:available.has(d),selected:d===selected,today:d===today};
+  });
+}
+function updateDateButton(){
+  const d=st.date||st.dates[st.dates.length-1];
+  $("#dateLabel").textContent=d?`${d.replace(/-/g,". ")} (${"일월화수목금토"[new Date(d+"T00:00:00Z").getUTCDay()]})`:"날짜 선택";
+  $("#date").setAttribute("aria-label",d?`${d} 분석 기준일 달력 열기`:"분석 기준일 달력 열기");
+}
+function calendarBounds(){
+  const year=+kstToday().slice(0,4),first=+(st.dates[0]||String(year)).slice(0,4),last=+(st.dates.at(-1)||String(year)).slice(0,4);
+  return [`${Math.min(year,first)}-01`,`${Math.max(year,last)+1}-12`];
+}
+function renderCalendar(focus=false){
+  const cfg=window.KD_CFG||{},today=kstToday(),rows=calendarRows(cal.month,st.dates,st.date,today,cfg.holidays||{}),bounds=calendarBounds();
+  if(!rows.some(r=>r.d===cal.focus&&r.available))cal.focus=(rows.find(r=>r.selected&&r.available)||rows.find(r=>r.available&&!r.outside)||rows.find(r=>r.available))?.d||"";
+  const [y,m]=cal.month.split("-");
+  $("#calMonth").textContent=`${y}년 ${+m}월`;
+  $("#calPrev").disabled=cal.month<=bounds[0];$("#calNext").disabled=cal.month>=bounds[1];
+  $("#calDays").innerHTML=rows.map(r=>{
+    const label=`${r.d} ${"일월화수목금토"[r.weekday]}요일${r.holiday?" · "+r.holiday:""}${r.today?" · 오늘":""}${!r.available?" · 자료 없음":""}`;
+    return `<button type="button" role="gridcell" class="cal-day${r.red?" cal-red":r.blue?" cal-blue":""}${r.outside?" outside":""}${r.selected?" selected":""}${r.today?" today":""}" data-date="${r.d}" tabindex="${r.d===cal.focus?0:-1}" aria-label="${esc(label)}" title="${esc(label)}" aria-selected="${r.selected}"${r.today?' aria-current="date"':""}${r.available?"":" disabled"}>${r.day}</button>`;
+  }).join("");
+  $("#calNote").textContent=(cfg.holiday_years||[]).includes(+y)?"자료 있는 날짜만 선택 · 노란색: 선택일·오늘":"공휴일 정보 준비 전 · 자료 있는 날짜만 선택";
+  if(focus){const b=$("#calDays").querySelector(`[data-date="${cal.focus}"]`);if(b)b.focus();else $("#calNext").focus()}
+}
+function positionCalendar(){
+  const box=$("#dateCalendar"),r=$("#date").getBoundingClientRect(),w=box.offsetWidth,h=box.offsetHeight;
+  box.style.left=Math.max(12,Math.min(r.left,innerWidth-w-12))+"px";
+  box.style.top=Math.max(12,Math.min(r.bottom+8,innerHeight-h-12))+"px";
+}
+function openCalendar(){
+  if(!st.dates.length)return;
+  cal.month=(st.date||st.dates.at(-1)||kstToday()).slice(0,7);cal.focus=st.date||"";
+  $("#dateCalendar").hidden=false;$("#date").setAttribute("aria-expanded","true");renderCalendar(true);positionCalendar();
+}
+function closeCalendar(focus=true){$("#dateCalendar").hidden=true;$("#date").setAttribute("aria-expanded","false");if(focus)$("#date").focus()}
+function moveCalendarMonth(step,focus=false){
+  const next=shiftCalendarMonth(cal.month,step),bounds=calendarBounds();if(next<bounds[0]||next>bounds[1])return;
+  cal.month=next;cal.focus="";renderCalendar(focus);positionCalendar();
+}
+$("#date").onclick=()=>$("#dateCalendar").hidden?openCalendar():closeCalendar();
+$("#date").onkeydown=e=>{if(e.key==="ArrowDown"){e.preventDefault();openCalendar()}};
+$("#calPrev").onclick=()=>moveCalendarMonth(-1);$("#calNext").onclick=()=>moveCalendarMonth(1);
+$("#calClose").onclick=()=>closeCalendar();
+$("#calDays").onclick=e=>{const b=e.target.closest("button[data-date]");if(!b||b.disabled)return;closeCalendar();go(b.dataset.date)};
+$("#dateCalendar").onkeydown=e=>{
+  if(e.key==="Escape"){e.preventDefault();closeCalendar();return}
+  if(e.key==="PageUp"||e.key==="PageDown"){e.preventDefault();moveCalendarMonth(e.key==="PageUp"?-1:1,true);return}
+  const b=e.target.closest("button[data-date]"),step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7}[e.key];
+  if(!b||!step)return;e.preventDefault();
+  const dates=new Set(st.dates),d=new Date(b.dataset.date+"T00:00:00Z");
+  for(let n=0;n<370;n++){d.setUTCDate(d.getUTCDate()+step);const next=calendarDate(d);if(dates.has(next)){cal.month=next.slice(0,7);cal.focus=next;renderCalendar(true);positionCalendar();break}}
+};
+document.addEventListener("pointerdown",e=>{if(!$("#dateCalendar").hidden&&!$("#dateCalendar").contains(e.target)&&!$("#date").contains(e.target))closeCalendar(false)});
+document.addEventListener("focusin",e=>{if(!$("#dateCalendar").hidden&&!$("#dateCalendar").contains(e.target)&&!$("#date").contains(e.target))closeCalendar(false)});
+addEventListener("resize",()=>{if(!$("#dateCalendar").hidden)positionCalendar()});
+
 function latestOnOpen(){
   return !!window.KD_ENC||matchMedia("(hover: none) and (pointer: coarse)").matches;
 }
@@ -487,7 +583,6 @@ async function init(){
   await loadIndex(latest);  // 모바일은 캐시된 날짜 목록 대신 최신 목록 확인
   if(!st.dates.length){$("#banner").hidden=false;$("#banner").textContent="데이터가 없습니다. open_dashboard.bat 으로 실행하면 데이터를 받습니다.";srvInit();return}
   const first=initialDate(st.dates,location.hash,latest);
-  $("#date").onchange=()=>go($("#date").value);
   $("#prev").onclick=()=>step(-1);$("#next").onclick=()=>step(1);
   await go(first);
   staleHint();srvInit();
@@ -533,7 +628,7 @@ async function srvPoll(){
     window.KD={};await loadIndex(true);
     if(!st.dates.length)return;
     $("#banner").hidden=true;
-    $("#date").onchange=()=>go($("#date").value);$("#prev").onclick=()=>step(-1);$("#next").onclick=()=>step(1);
+    $("#prev").onclick=()=>step(-1);$("#next").onclick=()=>step(1);
     go(wasLatest||!st.dates.includes(st.date)?st.dates[st.dates.length-1]:st.date,true);
   }
 }
@@ -541,7 +636,8 @@ function step(k){const i=st.dates.indexOf(st.date)+k;if(i>=0&&i<st.dates.length)
 async function go(d,bust){
   window.KD=window.KD||{};
   if(!window.KD[d]){try{await loadScript(st.src+d+".js"+(bust?"?v="+Date.now():""))}catch(e){alertBox("데이터 파일을 불러오지 못했습니다: "+d);return}}
-  st.date=d;st.D=window.KD[d];$("#date").value=d;
+  st.date=d;st.D=window.KD[d];updateDateButton();
+  if(!$("#dateCalendar").hidden){cal.month=d.slice(0,7);cal.focus=d;renderCalendar()}
   const i=st.dates.indexOf(d);$("#prev").disabled=i<=0;$("#next").disabled=i>=st.dates.length-1;
   render();
 }
