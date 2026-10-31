@@ -457,7 +457,9 @@ function stockCodeLink(t,market){
   const code=stockUrl(t)?.match(/\/stock\/([0-9A-Za-z]{6})\//)?.[1]||String(t??"");
   const A=window.KD_APP;
   if(!MK[market]&&A){const i=A.T.indexOf(code);if(i>=0)market=A.M[i]}
-  return stockLink(code,code,"mpop")+(MK[market]?" · "+esc(MK[market]):"");
+  const url=stockUrl(code)?`butler.html?code=${encodeURIComponent(code)}`:null;
+  const label=MK[market]?(url?`<a class="stock-link" href="${url}" target="_blank" rel="noopener noreferrer" title="버틀러 기업정보 (새 탭)">${esc(MK[market])}</a>`:esc(MK[market])):"";
+  return stockLink(code,code,"mpop")+(label?" · "+label:"");
 }
 function sectorStockLink(n,sector){
   const member=st.D.sectors.find(s=>s.sector===sector)?.members?.find(r=>r.n===n);
