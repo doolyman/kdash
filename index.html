@@ -426,40 +426,45 @@ const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim
 
 /* PC는 네이버페이 증권. 모바일 종목명은 나무 현재가, 종목코드는 mPOP 매매 화면. */
 function stockUrl(t){
+  const code=stockCode(t);
+  return code&&!stockMobile()?`https://stock.naver.com/domestic/stock/${code}/`:null;
+}
+function stockCode(t){
   let code=String(t??"").trim();
   if(/^\d{1,6}$/.test(code))code=code.padStart(6,"0");
-  if(!/^[0-9A-Za-z]{6}$/.test(code))return null;
-  const mobile=navigator.userAgentData?.mobile||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
+  return /^[0-9A-Za-z]{6}$/.test(code)?code:null;
+}
+function stockMobile(){
+  return navigator.userAgentData?.mobile||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
     (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
-  return mobile?`https://m.stock.naver.com/domestic/stock/${code}/total`:`https://stock.naver.com/domestic/stock/${code}/`;
 }
 function stockLink(t,n,broker="namuh"){
   const url=stockUrl(t);
-  const mpop=broker==="mpop",app=mpop?mpopUrl(t,url):namuhUrl(t,url);
-  if(app)return `<a class="stock-link" href="${esc(app)}" data-${mpop?"mpop":"namuh"}="1" data-fallback="${esc(url)}" title="${esc(n)} · ${mpop?"삼성증권 mPOP 매매":"나무증권 현재가"}">${esc(n)}</a>`;
+  const mpop=broker==="mpop",app=mpop?mpopUrl(t):namuhUrl(t);
+  if(app)return `<a class="stock-link" href="${esc(app)}" data-${mpop?"mpop":"namuh"}="1" title="${esc(n)} · ${mpop?"삼성증권 mPOP 매매":"나무증권 현재가"}">${esc(n)}</a>`;
   return url?`<a class="stock-link" href="${url}" target="_blank" rel="noopener noreferrer" title="${esc(n)} · 네이버페이 증권 (새 탭)">${esc(n)}</a>`:esc(n);
 }
-function namuhUrl(t,web=stockUrl(t)){
-  if(!web)return null;
-  const code=web.match(/\/stock\/([0-9A-Za-z]{6})\//)[1],ua=navigator.userAgent||"";
+function namuhUrl(t){
+  const code=stockCode(t),ua=navigator.userAgent||"";
+  if(!code)return null;
   // NH 공식 adc.util.js의 STK_QUOT: 화면 1210, opendata=page1^종목코드.
-  if(/Android/i.test(ua))return `intent://txrun/#Intent;scheme=txsmart;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.wooriwm.txsmart;i.RUNMODE=1;S.RUNSCREEN=1210;S.RUNOPENDATA=page1^${code};S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  if(/Android/i.test(ua))return `intent://txrun/#Intent;scheme=txsmart;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.wooriwm.txsmart;i.RUNMODE=1;S.RUNSCREEN=1210;S.RUNOPENDATA=page1^${code};end`;
   if(/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return `txSmart://web/openscreen/1210/page1^${code}`;
   return null;
 }
-function mpopUrl(t,web=stockUrl(t)){
-  if(!web)return null;
-  const code=web.match(/\/stock\/([0-9A-Za-z]{6})\//)[1],ua=navigator.userAgent||"";
+function mpopUrl(t){
+  const code=stockCode(t),ua=navigator.userAgent||"";
+  if(!code)return null;
   // 삼성증권 공식 common.mobile.js + 종목 페이지 call_mPOP3: 매매 1149, 전달값은 종목코드.
-  if(/Android/i.test(ua))return `intent://S/1149/${code}#Intent;scheme=mpopapp;package=com.samsungpop.android.mpop;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  if(/Android/i.test(ua))return `intent://S/1149/${code}#Intent;scheme=mpopapp;package=com.samsungpop.android.mpop;end`;
   if(/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return `mpopmain://S/1149/${code}?UserID=`;
   return null;
 }
 function stockCodeLink(t,market,name){
-  const code=stockUrl(t)?.match(/\/stock\/([0-9A-Za-z]{6})\//)?.[1]||String(t??"");
+  const code=stockCode(t)||String(t??"");
   const A=window.KD_APP;
   if(!MK[market]&&A){const i=A.T.indexOf(code);if(i>=0)market=A.M[i]}
-  const url=stockUrl(code)?`butler.html?code=${encodeURIComponent(code)}`:null;
+  const url=stockCode(code)?`butler.html?code=${encodeURIComponent(code)}`:null;
   const label=MK[market]?(url?`<a class="stock-link" href="${url}" target="_blank" rel="noopener noreferrer" title="버틀러 기업정보 (새 탭)">${esc(MK[market])}</a>`:esc(MK[market])):"";
   return stockLink(code,code,"mpop")+(label?" · "+label+telegramSearchLink(name):"");
 }
@@ -475,24 +480,6 @@ function sectorStockLink(n,sector){
   const member=st.D.sectors.find(s=>s.sector===sector)?.members?.find(r=>r.n===n);
   return stockLink(member?.t,n);
 }
-
-let stockAppCancel=null;
-function openStockApp(url,fallback){
-  if(stockAppCancel)stockAppCancel();
-  let timer=null;
-  const cancel=()=>{clearTimeout(timer);document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pagehide",cancel);if(stockAppCancel===cancel)stockAppCancel=null};
-  const onVisibility=()=>{if(document.visibilityState==="hidden")cancel()};
-  document.addEventListener("visibilitychange",onVisibility);
-  window.addEventListener("pagehide",cancel,{once:true});
-  stockAppCancel=cancel;
-  timer=setTimeout(()=>{const visible=document.visibilityState!=="hidden";cancel();if(visible)location.assign(fallback)},2500);
-  try{location.assign(url)}catch(e){cancel();location.assign(fallback)}
-}
-document.addEventListener("click",e=>{
-  const a=e.target.closest("a.stock-link[data-namuh],a.stock-link[data-mpop]");
-  if(!a||e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
-  e.preventDefault();openStockApp(a.getAttribute("href"),a.dataset.fallback);
-});
 
 /* ---------- data loading ---------- */
 function loadScript(src){if(window.kdEncLoad)return window.kdEncLoad(src);  // 휴대폰용 비공개 사이트: 암호화 파일 (enc.js)
