@@ -23,6 +23,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+      deployment: false
     steps:
       - name: Checkout published files
         uses: actions/checkout@v6
