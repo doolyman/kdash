@@ -205,7 +205,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <span class="upd" id="updBox"><button class="ib icon-btn" id="upd" type="button" aria-label="새로고침" title="새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11a9 9 0 0 1 15.4-6.4L21 7M21 2v5h-5M21 13a9 9 0 0 1-15.4 6.4L3 17M3 22v-5h5"/></svg></button><span class="sr-only" id="updMsg" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </div>
     <nav class="tabs" id="tabs">
-      <a href="#market">시장·자금</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">최다 출현</a><a href="#cumulative">누적강도</a><a href="#streak">연속 매수</a><a href="#track">추적</a><a href="backtest.html">전략 검증</a>
+      <a href="#market">시장</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">출현</a><a href="#cumulative">누적</a><a href="#streak">연속</a><a href="#daily-rise">상승</a><a href="#track">추적</a><a href="backtest.html">전략</a>
     </nav>
   </div>
 </header>
@@ -351,6 +351,19 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="grid stackgrid" id="streaks"></div>
   </section>
 
+  <!-- ================= 당일 상승률 ================= -->
+  <section class="sec" id="daily-rise">
+    <div class="sh"><h2>당일 상승률</h2>
+      <div class="ctrl" id="riseMarkets" role="group" aria-label="상승률 표 시장 선택">
+        <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KS" checked style="width:auto"> 코스피</label>
+        <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KQ" checked style="width:auto"> 코스닥</label>
+      </div>
+    </div>
+    <div class="sub" id="riseMeta" style="margin-bottom:8px"></div>
+    <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="riseTbl"></table></div></div>
+    <div class="muted-note">선택 거래일의 전체 종목 · 당일 상승률 내림차순 · 피·닥 대비는 코스피·코스닥 대비 초과수익(%p) · 기관은 기관 전체 순매수 기준 · 강도 = 순매수액 ÷ 당일 시가총액 × 100 (순매도 상계) · 미수집 수급은 –</div>
+  </section>
+
   <!-- ================= 추적 ================= -->
   <section class="sec" id="track">
     <div class="sh"><h2>매집 추적 중</h2><span class="meta" id="trkMeta"></span></div>
@@ -400,6 +413,7 @@ const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem("kd_"+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem("kd_"+k,JSON.stringify(v))}catch(e){}}};
 const st={src:"data/",dates:[],date:null,D:null,side:"buy",appSide:"buy",stkSide:"buy",cumSide:"buy",simSide:"buy",slots:[],slot:0,bubSide:"b",bubW:null,bubTop:null,bubOff:new Set(),fundN:0,tvN:0,cmp:[],trkF:null,trkM:null,listN:null,simN:0,simMin:null,simMode:"sum",btN:null,stkSel:null};
 const charts={};
+st.riseMarkets=new Set(["KS","KQ"]);
 let overrides=store.get("ov",{});
 st.appDays=clampAppDays(store.get("appDays",30));
 st.appSel=/^[01]{3}$/.test(store.get("appSel","010"))?store.get("appSel","010"):"010";
@@ -671,14 +685,14 @@ document.addEventListener("change",e=>{
   const s=e.target.closest(".secsel");if(!s)return;
   overrides[s.dataset.t]=s.value;overrides["_n_"+s.dataset.t]=s.dataset.n;
   if(!s.value){delete overrides[s.dataset.t]}
-  store.set("ov",overrides);renderOv();renderSim();renderLists();renderCumulative();renderTrack();
+  store.set("ov",overrides);renderOv();renderSim();renderLists();renderCumulative();renderDailyStocks();renderTrack();
 });
 function renderOv(){
   const rows=Object.keys(overrides).filter(k=>!k.startsWith("_n_")).map(t=>`${t},${overrides["_n_"+t]||""},${overrides[t]},직접`);
   $("#ovOut").value="ticker,name,sector,tag\n"+rows.join("\n");
 }
 $("#ovCopy").onclick=async()=>{const t=$("#ovOut");try{await navigator.clipboard.writeText(t.value);$("#ovCopy").textContent="복사됨"}catch(e){t.select()}};
-$("#ovClear").onclick=()=>{overrides={};store.set("ov",overrides);renderOv();renderSim();renderCumulative();renderTrack()};
+$("#ovClear").onclick=()=>{overrides={};store.set("ov",overrides);renderOv();renderSim();renderCumulative();renderDailyStocks();renderTrack()};
 
 /* ---------- render ---------- */
 function render(){
@@ -686,7 +700,7 @@ function render(){
   $("#gen").textContent=`생성 ${window.KD_GENERATED||D.generated} · 저장 ${D.n_days_stored}거래일`;
   $("#gen").title=`화면·로직·데이터의 마지막 변경 반영 시각 · 선택 거래일 자료 계산: ${D.generated}`;
   history.replaceState(null,"","#d"+D.date.replace(/-/g,""));
-  renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderTrack();renderBT();renderOv();applySorts();
+  renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderDailyStocks();renderTrack();renderBT();renderOv();applySorts();
 }
 
 function mk(id,cfg){if(charts[id])charts[id].destroy();const c=document.getElementById(id);if(!c||!window.Chart)return;charts[id]=new Chart(c,cfg)}
@@ -697,6 +711,26 @@ function baseOpts(extra){
     scales:{x:{grid:{display:false},ticks:{color:t,maxTicksLimit:6,maxRotation:0,font:{size:10}}},
             y:{grid:{color:g},ticks:{color:t,font:{size:10}}}}},extra||{});
 }
+
+/* 전체 종목의 당일 상승률. 다른 수급 표의 상위 개수·강도·기관 선택과 독립적이다. */
+function dailyStockRows(block,markets){
+  return (block?.rows||[]).filter(r=>markets.has(r.m)).slice().sort((a,b)=>
+    (b.r1??-Infinity)-(a.r1??-Infinity)||String(a.t).localeCompare(String(b.t)));
+}
+function renderDailyStocks(){
+  const block=st.D.daily_stocks,rows=dailyStockRows(block,st.riseMarkets);
+  $("#riseMarkets").querySelectorAll("input[data-market]").forEach(x=>x.checked=st.riseMarkets.has(x.dataset.market));
+  const missing=block?.missing||[];
+  $("#riseMeta").textContent=`${st.D.date} · ${rows.length.toLocaleString("ko-KR")}종목 · 당일 상승률순`+(missing.length?` · ${missing.join("·")} 수급 미수집 (갱신 후 표시)`:"");
+  const strength=v=>`<td data-sort="${v??""}">${pc(v,3)}</td>`;
+  $("#riseTbl").innerHTML=`<tr><th class="l">종목명</th><th>시총<span class="sub"> (억원)</span></th><th class="l">섹터</th><th>상승률<br><span class="sub">피·닥 대비</span></th><th>기관 매수강도<br><span class="sub">기관 전체</span></th><th>외국인 매수강도</th><th>기관+외국인<br><span class="sub">매수강도</span></th></tr>`+
+    (rows.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}">${fN(r.cap)}</td><td class="l">${esc(secOf(r.t,r.sec))||"–"}</td>${flowReturnCell(r)}${strength(r.inst)}${strength(r.foreign)}${strength(r.total)}</tr>`).join("")||`<tr><td colspan="7" class="empty">${!block?"데이터 갱신 후 표시됩니다.":st.riseMarkets.size?"표시할 종목이 없습니다.":"코스피 또는 코스닥을 선택해주세요."}</td></tr>`);
+}
+$("#riseMarkets").onchange=e=>{
+  const market=e.target.dataset.market;if(!["KS","KQ"].includes(market))return;
+  if(e.target.checked)st.riseMarkets.add(market);else st.riseMarkets.delete(market);
+  renderDailyStocks();applySorts();
+};
 
 /* ===== 시장 ===== */
 function renderMarket(){
@@ -1290,7 +1324,7 @@ document.addEventListener("click",e=>{
 });
 
 /* nav highlight */
-const secs=["market","sector","flow","appearance","cumulative","streak","track"];
+const secs=["market","sector","flow","appearance","cumulative","streak","daily-rise","track"];
 // 모바일 뒤로 가기로 복원된 페이지도 시작 절차를 다시 거쳐 최신 날짜 선택
 addEventListener("pageshow",e=>{if(e.persisted&&latestOnOpen())location.reload()});
 addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
