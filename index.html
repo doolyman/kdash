@@ -131,6 +131,17 @@ td .nm{font-weight:600}
 #riseTbl td:nth-child(4) .sub{white-space:normal}
 #riseTbl .nm{display:block;white-space:normal;overflow-wrap:anywhere}
 #riseTbl .code{white-space:nowrap;font-size:10.5px}
+#watchTbl{width:416px;table-layout:fixed}
+#watchTbl th,#watchTbl td{padding:6px 4px;white-space:normal;overflow-wrap:anywhere}
+#watchTbl th:nth-child(4),#watchTbl td:nth-child(4){text-align:left}
+#watchTbl td:nth-child(4) .stack{align-items:flex-start}
+#watchTbl .nm{display:block;white-space:normal}
+#watchTbl .code{white-space:nowrap;font-size:10.5px}
+.watch-toggle{border:0;background:none;color:var(--muted);padding:2px 5px 2px 0;cursor:pointer}
+#watchMonthly{width:504px;table-layout:fixed}
+#watchMonthly th,#watchMonthly td{padding:6px 4px;white-space:normal;overflow-wrap:anywhere}
+#watchMonthly td:nth-child(n+3){white-space:nowrap}
+#watchDetail .trade-scope{margin:8px 0;font-size:12px;color:var(--muted);line-height:1.6}
 .stock-link{color:inherit;text-decoration:underline dotted;text-underline-offset:3px}
 .stock-link:hover{color:var(--accent);text-decoration:underline}
 .stock-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
@@ -218,7 +229,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <span class="upd" id="updBox"><button class="ib icon-btn" id="upd" type="button" aria-label="새로고침" title="새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11a9 9 0 0 1 15.4-6.4L21 7M21 2v5h-5M21 13a9 9 0 0 1-15.4 6.4L3 17M3 22v-5h5"/></svg></button><span class="sr-only" id="updMsg" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </div>
     <nav class="tabs" id="tabs">
-      <a href="#market">시장</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">출현</a><a href="#cumulative">누적</a><a href="#streak">연속</a><a href="#daily-rise">상승</a><a href="#track">추적</a><a href="backtest.html">전략</a>
+      <a href="#market">시장</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">출현</a><a href="#cumulative">누적</a><a href="#streak">연속</a><a href="#daily-rise">상승</a><a href="#watch">관심</a><a href="#track">추적</a><a href="backtest.html">전략</a>
     </nav>
   </div>
 </header>
@@ -377,6 +388,14 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="muted-note">선택 거래일의 전체 종목 · 당일 상승률 내림차순 · 피·닥 대비는 코스피·코스닥 대비 초과수익(%p) · 기관은 기관 전체 순매수 기준 · 강도 = 순매수액 ÷ 당일 시가총액 × 100 (순매도 상계) · 미수집 수급은 –</div>
   </section>
 
+  <!-- ================= 관심 ================= -->
+  <section class="sec" id="watch">
+    <div class="sh"><h2>관심종목</h2><span class="meta" id="watchMeta"></span></div>
+    <div class="tw"><table id="watchTbl"></table></div>
+    <div class="muted-note">종목 행 또는 ▸ 버튼을 누르면 월별 수출 통계가 펼쳐집니다. 종목명·코드·시장·텔레그램 링크는 기존 연결을 유지합니다.</div>
+    <div class="panel" id="watchDetail" style="margin-top:12px" hidden></div>
+  </section>
+
   <!-- ================= 추적 ================= -->
   <section class="sec" id="track">
     <div class="sh"><h2>매집 추적 중</h2><span class="meta" id="trkMeta"></span></div>
@@ -524,9 +543,9 @@ async function loadIndex(bust){
       b.textContent="샘플(가상) 데이터로 표시 중입니다. 실제 수치가 아닙니다. 수집기를 실행하면 실제 데이터로 바뀝니다.";
     }
   }
-  window.KD_BUB=null;BUBIDX=null;window.KD_SER=null;window.KD_EV=null;window.KD_APP=null;SERIDX=null;
+  window.KD_BUB=null;BUBIDX=null;window.KD_SER=null;window.KD_EV=null;window.KD_APP=null;window.KD_WATCH=null;SERIDX=null;
   sharedLoads.clear();
-  if(!st.lazy)await Promise.all(["bubble.js","series.js","events.js","appearances.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
+  if(!st.lazy)await Promise.all(["bubble.js","series.js","events.js","appearances.js","watch_trade.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
   st.dates=(window.KD_DATES||[]).slice().sort();
   const cfg=window.KD_CFG||{};
   if(window.KD_CFG)document.querySelectorAll("[data-cfg]").forEach(el=>{const v=cfg[el.dataset.cfg];if(v!=null)el.textContent=v});
@@ -724,13 +743,13 @@ async function render(){
   $("#gen").title=`화면·로직·데이터의 마지막 변경 반영 시각 · 선택 거래일 자료 계산: ${D.generated}`;
   history.replaceState(null,"","#d"+D.date.replace(/-/g,""));
   if(st.lazy){await renderLazy();return}
-  renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderDailyStocks();renderTrack();renderBT();renderOv();applySorts();
+  renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderDailyStocks();renderWatch();renderTrack();renderBT();renderOv();applySorts();
 }
 
 /* 비공개 모바일 사이트: 마지막 자료·항목 유지, 필요한 공유 파일과 표만 준비한다. */
 const sharedLoads=new Map(),sectionJobs=new Map();
 let lazyObserver=null,lazyEpoch=0;
-function validSection(id){return ["market","sector","flow","appearance","cumulative","streak","daily-rise","track"].includes(id)?id:"market"}
+function validSection(id){return ["market","sector","flow","appearance","cumulative","streak","daily-rise","watch","track"].includes(id)?id:"market"}
 function rememberSection(id){st.section=validSection(id);if(st.lazy)store.set("lastSection_v1",st.section)}
 function sharedFile(name){
   if(!sharedLoads.has(name))sharedLoads.set(name,loadScript(st.src+name).catch(e=>{sharedLoads.delete(name);throw e}));
@@ -740,12 +759,12 @@ async function ensureSection(id){
   id=validSection(id);
   if(sectionJobs.has(id))return sectionJobs.get(id);
   const epoch=lazyEpoch,section=document.getElementById(id);
-  const files={market:["series.js"],sector:["bubble.js"],appearance:["appearances.js","series.js"],cumulative:["appearances.js","series.js"],streak:["series.js"],track:["events.js","series.js"]}[id]||[];
+  const files={market:["series.js"],sector:["bubble.js"],appearance:["appearances.js","series.js"],cumulative:["appearances.js","series.js"],streak:["series.js"],watch:["watch_trade.js"],track:["events.js","series.js"]}[id]||[];
   const job=(async()=>{
     try{
       await Promise.all(files.map(sharedFile));
       if(epoch!==lazyEpoch)return;
-      ({market:renderMarket,sector:renderSectors,flow:()=>{renderSim();renderLists()},appearance:renderAppearances,cumulative:renderCumulative,streak:renderStreaks,"daily-rise":renderDailyStocks,track:()=>{renderTrack();renderBT();renderOv()}})[id]();
+      ({market:renderMarket,sector:renderSectors,flow:()=>{renderSim();renderLists()},appearance:renderAppearances,cumulative:renderCumulative,streak:renderStreaks,"daily-rise":renderDailyStocks,watch:renderWatch,track:()=>{renderTrack();renderBT();renderOv()}})[id]();
       section.removeAttribute("data-lazy");section.querySelector(".lazy-notice")?.remove();applySorts();
     }catch(e){
       if(epoch!==lazyEpoch)return;
@@ -811,6 +830,47 @@ $("#riseMarkets").onchange=e=>{
   const market=e.target.dataset.market;if(!["KS","KQ"].includes(market))return;
   if(e.target.checked)st.riseMarkets.add(market);else st.riseMarkets.delete(market);
   renderDailyStocks();applySorts();
+};
+
+/* ===== 관심 ===== */
+function watchStockRows(W,D){
+  const daily=new Map((D.daily_stocks?.rows||[]).map(r=>[r.t,r]));
+  return (W?.companies||[]).map(c=>({...c,...daily.get(c.t),industry:c.industry}));
+}
+function watchMonthlyRows(W,ticker,product=""){
+  const company=W?.companies.find(c=>c.t===ticker);if(!company)return [];
+  return company.products.filter(code=>!product||code===product).flatMap(code=>{
+    const p=W.products[code];return (p?.rows||[]).map(r=>({...r,hs:code,product:p.name}));
+  }).sort((a,b)=>b.month.localeCompare(a.month)||a.hs.localeCompare(b.hs));
+}
+function renderWatch(){
+  const W=window.KD_WATCH,rows=watchStockRows(W,st.D);
+  if(st.watchTicker===undefined)st.watchTicker=store.get("watchTicker_v1",null);
+  if(!rows.some(r=>r.t===st.watchTicker))st.watchTicker=null;
+  $("#watchMeta").textContent=`주가 ${st.D.date}`+(W?` · 통계 조회 ${W.checked}`:"");
+  $("#watchTbl").innerHTML=`<colgroup><col style="width:136px"><col style="width:72px"><col style="width:72px"><col style="width:136px"></colgroup><tr><th class="l">종목명</th><th>시총<br><span class="sub">억원</span></th><th class="l">업종</th><th>상승률<br><span class="sub">피·닥 대비</span></th></tr>`+
+    (rows.map(r=>`<tr class="click${st.watchTicker===r.t?" sel":""}" data-watch="${r.t}"><td class="l"><span class="nm"><button type="button" class="watch-toggle" aria-label="${esc(r.n)} 수출 통계 ${st.watchTicker===r.t?"접기":"펼치기"}" aria-expanded="${st.watchTicker===r.t}" aria-controls="watchDetail">${st.watchTicker===r.t?"▾":"▸"}</button>${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}">${fN(r.cap)}</td><td class="l">${esc(r.industry)}</td>${flowReturnCell(r)}</tr>`).join("")||'<tr><td colspan="4" class="empty">관심 자료가 없습니다. 상단 새로고침으로 최신 자료를 받아주세요.</td></tr>');
+  renderWatchDetail();
+}
+function renderWatchDetail(){
+  const W=window.KD_WATCH,C=W?.companies.find(c=>c.t===st.watchTicker),box=$("#watchDetail");
+  box.hidden=!C;if(!C){box.innerHTML="";return}
+  if(!C.products.includes(st.watchProduct))st.watchProduct="";
+  const rows=watchMonthlyRows(W,C.t,st.watchProduct);
+  box.innerHTML=`<div class="sh"><h3>${esc(C.n)} · 제품군 월별 수출</h3><span class="meta">${esc(W.from)} ~ ${esc(W.through)} · 최근 24개월</span></div>`+
+    `<div class="chips" id="watchProducts" style="margin-bottom:8px">${[["","전체"],...C.products.map(code=>[code,W.products[code].name])].map(([code,name])=>`<button type="button" class="chip${st.watchProduct===code?" c-acc":""}" data-hs="${code}" aria-pressed="${st.watchProduct===code}" style="cursor:pointer">${esc(name)}</button>`).join("")}</div>`+
+    `<div class="trade-scope">${esc(W.scope)} · 제품군과 연결한 참고 HS 코드이며 각 기업의 실제 신고코드를 확인한 것은 아닙니다. 수출단가는 <b>USD/kg</b>로 장비 1대당 판가가 아닙니다. <b>MoM·YoY는 수출금액 기준</b>입니다.</div>`+
+    `<div class="tw"><div class="scroll-y" style="max-height:540px"><table id="watchMonthly"><colgroup><col style="width:64px"><col style="width:112px"><col style="width:92px"><col style="width:84px"><col style="width:76px"><col style="width:76px"></colgroup><tr><th class="l">월</th><th class="l">제품명<br><span class="sub">HS 코드</span></th><th>수출금액<br><span class="sub">만 USD</span></th><th>수출단가<br><span class="sub">USD/kg</span></th><th>MoM %</th><th>YoY %</th></tr>`+
+    rows.map(r=>`<tr><td class="l" data-sort="${r.month}">${esc(r.month)}</td><td class="l" title="${esc(W.products[r.hs].description)}">${esc(r.product)}<div class="code">${esc(r.hs)}</div></td><td data-sort="${r.export_usd??""}">${fN(r.export_usd==null?null:r.export_usd/10000,2)}</td><td data-sort="${r.unit_usd_kg??""}">${fN(r.unit_usd_kg,2)}</td><td data-sort="${r.mom??""}">${pc(r.mom)}</td><td data-sort="${r.yoy??""}">${pc(r.yoy)}</td></tr>`).join("")+`</table></div></div>`+
+    `<div class="trade-scope">관세청의 매월 15일경 현행화 주기를 감안해 16일부터 전월을 포함합니다. 주가 선택일과 별도로 위 조회일 기준의 최신 수정 통계를 표시합니다. 전월·전년 금액이 0이거나 없으면 증감률은 –입니다.<br>${C.products.map(code=>`HS ${esc(code)}: ${esc(W.products[code].description)}`).join("<br>")}<br>출처: <a href="${esc(W.source)}" target="_blank" rel="noopener noreferrer">관세청·공공데이터포털</a> · 자료 전달: <a href="${esc(W.relay)}" target="_blank" rel="noopener noreferrer">AI Knowledge Hub</a> · <a href="${esc(C.source)}" target="_blank" rel="noopener noreferrer">기업 제품 소개</a></div>`;
+}
+$("#watchTbl").onclick=e=>{
+  if(e.target.closest("a"))return;const row=e.target.closest("tr[data-watch]");if(!row)return;
+  st.watchTicker=st.watchTicker===row.dataset.watch?null:row.dataset.watch;st.watchProduct="";
+  store.set("watchTicker_v1",st.watchTicker);renderWatch();applySorts();
+};
+$("#watchDetail").onclick=e=>{
+  const button=e.target.closest("button[data-hs]");if(!button)return;st.watchProduct=button.dataset.hs;renderWatchDetail();applySorts();
 };
 
 /* ===== 시장 ===== */
@@ -1405,7 +1465,7 @@ document.addEventListener("click",e=>{
 });
 
 /* nav highlight */
-const secs=["market","sector","flow","appearance","cumulative","streak","daily-rise","track"];
+const secs=["market","sector","flow","appearance","cumulative","streak","daily-rise","watch","track"];
 addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
   if(st.D&&cur!==st.section)rememberSection(cur);
   document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur))},{passive:true});
