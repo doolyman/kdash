@@ -6,7 +6,36 @@
 const E=window.KD_ENC;if(!E)return;
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const LS="kd_enc_key_"+E.salt.slice(0,10);
-let key=null;
+let key=null,manifest=null;
+const manifestPath="data/manifest.json";
+const cacheReady=(async()=>{try{return await caches.open("kd-encrypted-v1-"+E.salt)}catch{return null}})();
+const cacheUrl=path=>new URL(path,location.href).href;
+async function cached(path){try{return await (await cacheReady)?.match(cacheUrl(path))}catch{return null}}
+async function save(path,response){try{const c=await cacheReady;if(!c)return false;await c.put(cacheUrl(path),response);return true}catch{return false}}
+async function prune(m){
+  try{
+    const c=await cacheReady;if(!c||typeof c.keys!=="function")return;
+    const keep=new Set([cacheUrl(manifestPath),cacheUrl("data/check.bin?snapshot="+m.auth),...Object.entries(m.files).map(([name,hash])=>cacheUrl("data/"+name.replace(/\.js$/,".bin")+"?snapshot="+hash))]);
+    await Promise.all((await c.keys()).filter(r=>!keep.has(r.url)).map(r=>c.delete(r)));
+  }catch{}
+}
+function validManifest(m){
+  return m&&m.v===1&&/^[a-f0-9]{64}$/.test(m.auth)&&m.files&&typeof m.files==="object"&&
+    /^[a-f0-9]{64}$/.test(m.files["dates.js"])&&
+    Object.entries(m.files).every(([name,hash])=>/^[\w.-]+\.js$/.test(name)&&/^[a-f0-9]{64}$/.test(hash))&&
+    (m.latest===null||/^\d{4}-\d{2}-\d{2}$/.test(m.latest));
+}
+async function readManifest(fresh=false){
+  if(!fresh){try{const hit=await cached(manifestPath);if(hit){const m=await hit.json();if(validManifest(m))return m}}catch{}}
+  const response=await fetch(manifestPath,{cache:"no-store"});
+  if(!response.ok)throw new Error("자료 목록을 불러오지 못했습니다.");
+  const m=await response.json();if(!validManifest(m))throw new Error("자료 목록을 확인하지 못했습니다.");
+  return m;
+}
+const snapshotReady=(async()=>{manifest=await readManifest();return manifest})();
+// 최초 비밀번호 화면이 뜨기 전에 네트워크가 실패해도 미처리 오류를 만들지 않는다.
+snapshotReady.catch(()=>{});
+const sha=async data=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",data)),v=>v.toString(16).padStart(2,"0")).join("");
 
 async function derive(pw){
   const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
@@ -17,7 +46,19 @@ async function dec(buf){
   const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:u.slice(0,12)},key,u.slice(12));
   return await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
 }
-async function fetchDec(path){const r=await fetch(path,{cache:"no-cache"});if(!r.ok)throw new Error(path);return dec(await r.arrayBuffer())}
+async function fetchDec(path,m=manifest){
+  if(!m)m=await snapshotReady;
+  const name=path.split("/").pop().replace(/\.bin$/,".js");
+  const auth=path==="data/check.bin",hash=auth?m.auth:m.files[name];
+  if(!hash)throw new Error("저장된 자료에 없는 항목입니다. 새로고침을 눌러주세요.");
+  const cacheKey=path+"?snapshot="+hash,hit=await cached(cacheKey);
+  if(hit){try{return await dec(await hit.arrayBuffer())}catch{try{await (await cacheReady)?.delete(cacheUrl(cacheKey))}catch{}}}
+  const r=await fetch(path,{cache:"no-cache"});if(!r.ok)throw new Error(path);
+  const buf=await r.arrayBuffer(),code=await dec(buf);
+  const actual=await sha(auth?buf:new TextEncoder().encode(code));
+  if(actual!==hash)throw new Error("서버 자료가 변경됐습니다. 새로고침을 눌러주세요.");
+  await save(cacheKey,new Response(buf));return code;
+}
 async function check(){try{return (await fetchDec("data/check.bin"))==="kdash-ok"}catch(e){return false}}
 
 /* 페이지의 데이터 로더가 이걸 부름: "data/2026-10-16.js?v=1" → data/2026-10-16.bin 을 풀어서 실행 */
@@ -25,11 +66,28 @@ window.kdEncLoad=async src=>{
   const code=await fetchDec(src.replace(/\?.*$/,"").replace(/\.js$/,".bin"));
   const s=document.createElement("script");s.textContent=code;document.head.appendChild(s);s.remove();
 };
-window.kdEncLock=()=>{try{localStorage.removeItem(LS)}catch(e){}location.reload()};
+// 새 목록·확인 파일·최신 거래일을 모두 확인한 뒤에만 저장된 목록을 교체한다.
+window.kdEncRefresh=async()=>{
+  const next=await readManifest(true);
+  try{if(await fetchDec("data/check.bin",next)!=="kdash-ok")throw new Error("비밀번호를 확인해주세요.")}
+  catch(e){
+    if(e.name==="OperationError"&&next.auth!==manifest?.auth){
+      await save(manifestPath,new Response(JSON.stringify(next)));localStorage.removeItem(LS);location.reload();
+    }
+    throw e;
+  }
+  await fetchDec("data/dates.bin",next);
+  if(next.latest)await fetchDec("data/"+next.latest+".bin",next);
+  const saved=await save(manifestPath,new Response(JSON.stringify(next),{headers:{"Content-Type":"application/json"}}));
+  if(await cacheReady&&!saved)throw new Error("새 자료를 저장하지 못했습니다. 기존 자료를 유지합니다.");
+  manifest=next;await prune(next);return next;
+};
+window.kdEncLock=async()=>{try{localStorage.removeItem(LS);await (await cacheReady)?.delete(cacheUrl(manifestPath))}catch(e){}location.reload()};
 
 window.kdEncReady=(async()=>{
+  await snapshotReady;
   try{const j=localStorage.getItem(LS);
-    if(j){key=await crypto.subtle.importKey("jwk",JSON.parse(j),{name:"AES-GCM"},true,["decrypt"]);if(await check())return;localStorage.removeItem(LS)}}catch(e){}
+    if(j){key=await crypto.subtle.importKey("jwk",JSON.parse(j),{name:"AES-GCM"},true,["decrypt"]);if(await check()){await save(manifestPath,new Response(JSON.stringify(manifest)));return}localStorage.removeItem(LS)}}catch(e){}
   if(document.readyState==="loading")await new Promise(r=>addEventListener("DOMContentLoaded",r));
   const box=document.createElement("div");
   box.setAttribute("style","position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg,#0f141b)");
@@ -48,6 +106,7 @@ window.kdEncReady=(async()=>{
     try{key=await derive(pw.value)}catch(x){key=null}
     if(key&&await check()){
       if(rem.checked){try{localStorage.setItem(LS,JSON.stringify(await crypto.subtle.exportKey("jwk",key)))}catch(x){}}
+      await save(manifestPath,new Response(JSON.stringify(manifest)));
       box.remove();done();
     }else{err.textContent="비밀번호가 맞지 않습니다.";btn.disabled=false;btn.textContent="열기";pw.select()}
   }});

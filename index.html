@@ -82,6 +82,10 @@ nav.tabs a:hover,nav.tabs a.on{background:var(--accent-soft);color:var(--accent)
 .banner{background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);padding:8px 12px;border-radius:8px;margin-top:12px;font-size:13px}
 
 section.sec{padding-top:28px;scroll-margin-top:70px}
+section.sec[data-lazy="pending"]{min-height:75vh}
+section.sec[data-lazy="pending"]>:not(.sh):not(.lazy-notice){display:none}
+section.sec[data-lazy="pending"] .ctrl{visibility:hidden}
+.lazy-notice{padding:16px 0;color:var(--muted);font-size:13px}
 .sh{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-bottom:12px}
 .sh h2{margin:0;font-size:21px;letter-spacing:-.02em;text-wrap:balance}
 .sh .meta{color:var(--muted);font-size:12.5px}
@@ -486,6 +490,7 @@ function mpopUrl(t){
 function stockCodeLink(t,market,name){
   const code=stockCode(t)||String(t??"");
   const A=window.KD_APP;
+  if(!MK[market]&&typeof st!=="undefined")market=st.D?.daily_stocks?.rows.find(r=>r.t===code)?.m;
   if(!MK[market]&&A){const i=A.T.indexOf(code);if(i>=0)market=A.M[i]}
   const url=stockCode(code)?`butler.html?code=${encodeURIComponent(code)}`:null;
   const label=MK[market]?(url?`<a class="stock-link" href="${url}" target="_blank" rel="noopener noreferrer" title="버틀러 기업정보 (새 탭)">${esc(MK[market])}</a>`:esc(MK[market])):"";
@@ -520,7 +525,8 @@ async function loadIndex(bust){
     }
   }
   window.KD_BUB=null;BUBIDX=null;window.KD_SER=null;window.KD_EV=null;window.KD_APP=null;SERIDX=null;
-  await Promise.all(["bubble.js","series.js","events.js","appearances.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
+  sharedLoads.clear();
+  if(!st.lazy)await Promise.all(["bubble.js","series.js","events.js","appearances.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
   st.dates=(window.KD_DATES||[]).slice().sort();
   const cfg=window.KD_CFG||{};
   if(window.KD_CFG)document.querySelectorAll("[data-cfg]").forEach(el=>{const v=cfg[el.dataset.cfg];if(v!=null)el.textContent=v});
@@ -607,7 +613,7 @@ document.addEventListener("focusin",e=>{if(!$("#dateCalendar").hidden&&!$("#date
 addEventListener("resize",()=>{if(!$("#dateCalendar").hidden)positionCalendar()});
 
 function latestOnOpen(){
-  return !!window.KD_ENC||matchMedia("(hover: none) and (pointer: coarse)").matches;
+  return false;  // 접속·뒤로 가기 시 자동 갱신하지 않고 마지막 조회 날짜를 유지한다.
 }
 function initialDate(dates,hash,latest){
   if(!dates.length)return null;
@@ -616,12 +622,15 @@ function initialDate(dates,hash,latest){
   return !latest&&dates.includes(requested)?requested:dates[dates.length-1];
 }
 async function init(){
-  if(window.kdEncReady)await window.kdEncReady;  // 비밀번호 입력 대기
+  st.lazy=!!window.KD_ENC;
+  st.section=validSection(store.get("lastSection_v1","market"));
+  try{if(window.kdEncReady)await window.kdEncReady}catch(e){alertBox("자료를 열지 못했습니다. 인터넷 연결 후 새로고침해주세요.");$("#upd").onclick=()=>location.reload();return}
   if(window.kdEncLock){const b=document.createElement("button");b.className="ib icon-btn";b.textContent="🔒";b.setAttribute("aria-label","잠금");b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".datebox").insertBefore(b,$("#updBox"))}
   const latest=latestOnOpen();
   await loadIndex(latest);  // 모바일은 캐시된 날짜 목록 대신 최신 목록 확인
   if(!st.dates.length){$("#banner").hidden=false;$("#banner").textContent="데이터가 없습니다. open_dashboard.bat 으로 실행하면 데이터를 받습니다.";srvInit();return}
-  const first=initialDate(st.dates,location.hash,latest);
+  const remembered=st.lazy?store.get("lastDate_v1",null):null;
+  const first=initialDate(st.dates,location.hash||(remembered?"#d"+remembered.replace(/-/g,""):""),latest);
   $("#prev").onclick=()=>step(-1);$("#next").onclick=()=>step(1);
   await go(first);
   staleHint();srvInit();
@@ -638,6 +647,10 @@ function staleHint(){
 /* ---------- 로컬 실행기(serve.py)와 연결: 갱신 버튼 · 진행 표시 · 끝나면 자동 새로고침 ---------- */
 let srvLastFinish=null,srvTimer=null;
 async function srvInit(){
+  if(window.KD_ENC){
+    const b=$("#upd");b.title="최신 자료 받기 (누를 때만 갱신)";b.setAttribute("aria-label","최신 자료 받기");
+    b.onclick=refreshMobile;return;
+  }
   $("#upd").onclick=()=>location.reload();
   if(!location.protocol.startsWith("http"))return;
   let s;try{const r=await fetch("/api/status",{cache:"no-store"});if(!r.ok)return;s=await r.json()}catch(e){return}
@@ -678,7 +691,8 @@ async function go(d,bust){
   st.date=d;st.D=window.KD[d];updateDateButton();
   if(!$("#dateCalendar").hidden){cal.month=d.slice(0,7);cal.focus=d;renderCalendar()}
   const i=st.dates.indexOf(d);$("#prev").disabled=i<=0;$("#next").disabled=i>=st.dates.length-1;
-  render();
+  if(st.lazy)store.set("lastDate_v1",d);
+  await render();
 }
 function alertBox(m){const b=$("#banner");b.hidden=false;b.textContent=m}
 
@@ -704,12 +718,70 @@ $("#ovCopy").onclick=async()=>{const t=$("#ovOut");try{await navigator.clipboard
 $("#ovClear").onclick=()=>{overrides={};store.set("ov",overrides);renderOv();renderSim();renderCumulative();renderDailyStocks();renderTrack()};
 
 /* ---------- render ---------- */
-function render(){
+async function render(){
   const D=st.D;
   $("#gen").textContent=`생성 ${window.KD_GENERATED||D.generated} · 저장 ${D.n_days_stored}거래일`;
   $("#gen").title=`화면·로직·데이터의 마지막 변경 반영 시각 · 선택 거래일 자료 계산: ${D.generated}`;
   history.replaceState(null,"","#d"+D.date.replace(/-/g,""));
+  if(st.lazy){await renderLazy();return}
   renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderDailyStocks();renderTrack();renderBT();renderOv();applySorts();
+}
+
+/* 비공개 모바일 사이트: 마지막 자료·항목 유지, 필요한 공유 파일과 표만 준비한다. */
+const sharedLoads=new Map(),sectionJobs=new Map();
+let lazyObserver=null,lazyEpoch=0;
+function validSection(id){return ["market","sector","flow","appearance","cumulative","streak","daily-rise","track"].includes(id)?id:"market"}
+function rememberSection(id){st.section=validSection(id);if(st.lazy)store.set("lastSection_v1",st.section)}
+function sharedFile(name){
+  if(!sharedLoads.has(name))sharedLoads.set(name,loadScript(st.src+name).catch(e=>{sharedLoads.delete(name);throw e}));
+  return sharedLoads.get(name);
+}
+async function ensureSection(id){
+  id=validSection(id);
+  if(sectionJobs.has(id))return sectionJobs.get(id);
+  const epoch=lazyEpoch,section=document.getElementById(id);
+  const files={market:["series.js"],sector:["bubble.js"],appearance:["appearances.js","series.js"],cumulative:["appearances.js","series.js"],streak:["series.js"],track:["events.js","series.js"]}[id]||[];
+  const job=(async()=>{
+    try{
+      await Promise.all(files.map(sharedFile));
+      if(epoch!==lazyEpoch)return;
+      ({market:renderMarket,sector:renderSectors,flow:()=>{renderSim();renderLists()},appearance:renderAppearances,cumulative:renderCumulative,streak:renderStreaks,"daily-rise":renderDailyStocks,track:()=>{renderTrack();renderBT();renderOv()}})[id]();
+      section.removeAttribute("data-lazy");section.querySelector(".lazy-notice")?.remove();applySorts();
+    }catch(e){
+      if(epoch!==lazyEpoch)return;
+      sectionJobs.delete(id);
+      const notice=section.querySelector(".lazy-notice");
+      if(notice){notice.textContent="자료를 불러오지 못했습니다. ";const b=document.createElement("button");b.className="ib";b.textContent="다시 시도";b.onclick=()=>ensureSection(id);notice.appendChild(b)}
+      alertBox("자료를 불러오지 못했습니다. 서버 자료가 바뀌었다면 위 새로고침을 눌러주세요.");
+    }
+  })();
+  sectionJobs.set(id,job);return job;
+}
+async function renderLazy(){
+  lazyObserver?.disconnect();lazyEpoch++;sectionJobs.clear();
+  document.querySelectorAll("main section.sec").forEach(section=>{
+    section.dataset.lazy="pending";
+    let notice=section.querySelector(".lazy-notice");if(!notice){notice=document.createElement("div");notice.className="lazy-notice";section.appendChild(notice)}
+    notice.textContent="자료 준비 중…";
+  });
+  const id=validSection(st.section);await ensureSection(id);
+  document.getElementById(id).scrollIntoView({block:"start"});
+  if(typeof IntersectionObserver==="function"){
+    lazyObserver=new IntersectionObserver(entries=>{entries.filter(e=>e.isIntersecting).forEach(e=>ensureSection(e.target.id))},{rootMargin:"0px"});
+    document.querySelectorAll("main section.sec").forEach(section=>lazyObserver.observe(section));
+  }
+}
+async function refreshMobile(){
+  const b=$("#upd");if(b.disabled)return;
+  b.disabled=true;b.setAttribute("aria-busy","true");$("#updMsg").textContent="최신 자료 받는 중…";
+  try{
+    const next=await window.kdEncRefresh();
+    if(next.latest){store.set("lastDate_v1",next.latest);history.replaceState(null,"","#d"+next.latest.replace(/-/g,""))}
+    location.reload();
+  }catch(e){
+    alertBox("갱신하지 못했습니다. 기존 자료를 유지합니다. 인터넷 연결 후 다시 시도해주세요.");
+    b.disabled=false;b.setAttribute("aria-busy","false");$("#updMsg").textContent="갱신 실패 · 기존 자료 유지";
+  }
 }
 
 function mk(id,cfg){if(charts[id])charts[id].destroy();const c=document.getElementById(id);if(!c||!window.Chart)return;charts[id]=new Chart(c,cfg)}
@@ -1334,11 +1406,10 @@ document.addEventListener("click",e=>{
 
 /* nav highlight */
 const secs=["market","sector","flow","appearance","cumulative","streak","daily-rise","track"];
-// 모바일 뒤로 가기로 복원된 페이지도 시작 절차를 다시 거쳐 최신 날짜 선택
-addEventListener("pageshow",e=>{if(e.persisted&&latestOnOpen())location.reload()});
 addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
+  if(st.D&&cur!==st.section)rememberSection(cur);
   document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur))},{passive:true});
-document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();document.getElementById(a.getAttribute("href").slice(1)).scrollIntoView({behavior:"smooth"})}));
+document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();const id=a.getAttribute("href").slice(1);rememberSection(id);if(st.lazy)ensureSection(id);document.getElementById(id).scrollIntoView({behavior:"smooth"})}));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>st.D&&render());
 new MutationObserver(()=>st.D&&render()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 
