@@ -118,11 +118,15 @@ tr:last-child td{border-bottom:0}
 th{cursor:pointer;user-select:none} th:hover{color:var(--accent)} th::after{content:attr(data-arrow);color:var(--accent)}
 th.l,td.l{text-align:left} th.c,td.c{text-align:center}
 td .nm{font-weight:600}
-#riseTbl{width:max-content}
-#riseTbl th,#riseTbl td{padding-left:5px;padding-right:5px}
+#riseTbl{width:680px;table-layout:fixed}
+#riseTbl th,#riseTbl td{padding:6px 4px;white-space:normal;overflow-wrap:anywhere}
+#riseTbl th{word-break:keep-all}
+#riseTbl td:nth-child(2),#riseTbl td:nth-child(n+5){white-space:nowrap;font-variant-numeric:tabular-nums}
 #riseTbl th:nth-child(4),#riseTbl td:nth-child(4){text-align:left}
 #riseTbl td:nth-child(4) .stack{align-items:flex-start}
-#riseTbl .nm{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+#riseTbl td:nth-child(4) .sub{white-space:normal}
+#riseTbl .nm{display:block;white-space:normal;overflow-wrap:anywhere}
+#riseTbl .code{white-space:nowrap;font-size:10.5px}
 .stock-link{color:inherit;text-decoration:underline dotted;text-underline-offset:3px}
 .stock-link:hover{color:var(--accent);text-decoration:underline}
 .stock-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
@@ -728,7 +732,7 @@ function renderDailyStocks(){
   const missing=block?.missing||[];
   $("#riseMeta").textContent=`${st.D.date} · ${rows.length.toLocaleString("ko-KR")}종목 · 당일 상승률순`+(missing.length?` · ${missing.join("·")} 수급 미수집 (갱신 후 표시)`:"");
   const strength=v=>`<td data-sort="${v??""}">${pc(v,3)}</td>`;
-  $("#riseTbl").innerHTML=`<tr><th class="l">종목명</th><th>시총<span class="sub"> (억원)</span></th><th class="l">섹터</th><th>상승률<br><span class="sub">피·닥 대비</span></th><th>기관+외국인<br><span class="sub">매수강도</span></th><th>기관 매수강도<br><span class="sub">기관 전체</span></th><th>외국인 매수강도</th></tr>`+
+  $("#riseTbl").innerHTML=`<colgroup><col style="width:136px"><col style="width:72px"><col style="width:72px"><col style="width:136px"><col style="width:88px"><col style="width:88px"><col style="width:88px"></colgroup><tr><th class="l">종목명</th><th>시총<span class="sub"> (억원)</span></th><th class="l">섹터</th><th>상승률<br><span class="sub">피·닥 대비</span></th><th>기관+외국인<br><span class="sub">매수강도</span></th><th>기관 매수강도<br><span class="sub">기관 전체</span></th><th>외국인 매수강도</th></tr>`+
     (rows.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}">${fN(r.cap)}</td><td class="l">${esc(secOf(r.t,r.sec))||"–"}</td>${flowReturnCell(r)}${strength(r.total)}${strength(r.inst)}${strength(r.foreign)}</tr>`).join("")||`<tr><td colspan="7" class="empty">${!block?"데이터 갱신 후 표시됩니다.":st.riseMarkets.size?"표시할 종목이 없습니다.":"코스피 또는 코스닥을 선택해주세요."}</td></tr>`);
 }
 $("#riseMarkets").onchange=e=>{
