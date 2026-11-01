@@ -138,9 +138,11 @@ td .nm{font-weight:600}
 #watchTbl .nm{display:block;white-space:normal}
 #watchTbl .code{white-space:nowrap;font-size:10.5px}
 .watch-toggle{border:0;background:none;color:var(--muted);padding:2px 5px 2px 0;cursor:pointer}
-#watchMonthly{width:504px;table-layout:fixed}
-#watchMonthly th,#watchMonthly td{padding:6px 4px;white-space:normal;overflow-wrap:anywhere}
-#watchMonthly td:nth-child(n+3){white-space:nowrap}
+#watchCharts{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.watch-chart{height:280px;min-width:0;margin-top:10px}
+.watch-latest{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+.watch-latest>div{background:var(--panel2);border-radius:6px;padding:6px 8px;font-size:12px}
+.watch-latest b{display:block;font-size:14px;margin-top:2px}
 #watchDetail .trade-scope{margin:8px 0;font-size:12px;color:var(--muted);line-height:1.6}
 .stock-link{color:inherit;text-decoration:underline dotted;text-underline-offset:3px}
 .stock-link:hover{color:var(--accent);text-decoration:underline}
@@ -392,7 +394,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   <section class="sec" id="watch">
     <div class="sh"><h2>관심종목</h2><span class="meta" id="watchMeta"></span></div>
     <div class="tw"><table id="watchTbl"></table></div>
-    <div class="muted-note">종목 행 또는 ▸ 버튼을 누르면 월별 수출 통계가 펼쳐집니다. 종목명·코드·시장·텔레그램 링크는 기존 연결을 유지합니다.</div>
+    <div class="muted-note">종목 행 또는 ▸ 버튼을 누르면 품목별 월별 수출 그래프가 펼쳐집니다. 종목명·코드·시장·텔레그램 링크는 기존 연결을 유지합니다.</div>
     <div class="panel" id="watchDetail" style="margin-top:12px" hidden></div>
   </section>
 
@@ -837,32 +839,55 @@ function watchStockRows(W,D){
   const daily=new Map((D.daily_stocks?.rows||[]).map(r=>[r.t,r]));
   return (W?.companies||[]).map(c=>({...c,...daily.get(c.t),industry:c.industry}));
 }
-function watchMonthlyRows(W,ticker,product=""){
-  const company=W?.companies.find(c=>c.t===ticker);if(!company)return [];
-  return company.products.filter(code=>!product||code===product).flatMap(code=>{
-    const p=W.products[code];return (p?.rows||[]).map(r=>({...r,hs:code,product:p.name}));
-  }).sort((a,b)=>b.month.localeCompare(a.month)||a.hs.localeCompare(b.hs));
-}
 function renderWatch(){
   const W=window.KD_WATCH,rows=watchStockRows(W,st.D);
   if(st.watchTicker===undefined)st.watchTicker=store.get("watchTicker_v1",null);
   if(!rows.some(r=>r.t===st.watchTicker))st.watchTicker=null;
-  $("#watchMeta").textContent=`주가 ${st.D.date}`+(W?` · 통계 조회 ${W.checked}`:"");
+  $("#watchMeta").textContent=`주가 ${st.D.date}`+(W?` · 통계 갱신 ${W.checked}`:"");
   $("#watchTbl").innerHTML=`<colgroup><col style="width:136px"><col style="width:72px"><col style="width:72px"><col style="width:136px"></colgroup><tr><th class="l">종목명</th><th>시총<br><span class="sub">억원</span></th><th class="l">업종</th><th>상승률<br><span class="sub">피·닥 대비</span></th></tr>`+
     (rows.map(r=>`<tr class="click${st.watchTicker===r.t?" sel":""}" data-watch="${r.t}"><td class="l"><span class="nm"><button type="button" class="watch-toggle" aria-label="${esc(r.n)} 수출 통계 ${st.watchTicker===r.t?"접기":"펼치기"}" aria-expanded="${st.watchTicker===r.t}" aria-controls="watchDetail">${st.watchTicker===r.t?"▾":"▸"}</button>${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}">${fN(r.cap)}</td><td class="l">${esc(r.industry)}</td>${flowReturnCell(r)}</tr>`).join("")||'<tr><td colspan="4" class="empty">관심 자료가 없습니다. 상단 새로고침으로 최신 자료를 받아주세요.</td></tr>');
   renderWatchDetail();
 }
 function renderWatchDetail(){
   const W=window.KD_WATCH,C=W?.companies.find(c=>c.t===st.watchTicker),box=$("#watchDetail");
+  Object.keys(charts).filter(id=>id.startsWith("watch_")).forEach(id=>{charts[id].destroy();delete charts[id]});
   box.hidden=!C;if(!C){box.innerHTML="";return}
   if(!C.products.includes(st.watchProduct))st.watchProduct="";
-  const rows=watchMonthlyRows(W,C.t,st.watchProduct);
-  box.innerHTML=`<div class="sh"><h3>${esc(C.n)} · 제품군 월별 수출</h3><span class="meta">${esc(W.from)} ~ ${esc(W.through)} · 최근 24개월</span></div>`+
+  st.watchChartMode=st.watchChartMode==="growth"?"growth":"trade";
+  const codes=C.products.filter(code=>!st.watchProduct||code===st.watchProduct);
+  box.innerHTML=`<div class="sh"><h3>${esc(C.n)} · 제품군 월별 수출</h3><span class="meta">${esc(W.from)} ~ ${esc(W.through)} · 24개월</span></div>`+
     `<div class="chips" id="watchProducts" style="margin-bottom:8px">${[["","전체"],...C.products.map(code=>[code,W.products[code].name])].map(([code,name])=>`<button type="button" class="chip${st.watchProduct===code?" c-acc":""}" data-hs="${code}" aria-pressed="${st.watchProduct===code}" style="cursor:pointer">${esc(name)}</button>`).join("")}</div>`+
-    `<div class="trade-scope">${esc(W.scope)} · 제품군과 연결한 참고 HS 코드이며 각 기업의 실제 신고코드를 확인한 것은 아닙니다. 수출단가는 <b>USD/kg</b>로 장비 1대당 판가가 아닙니다. <b>MoM·YoY는 수출금액 기준</b>입니다.</div>`+
-    `<div class="tw"><div class="scroll-y" style="max-height:540px"><table id="watchMonthly"><colgroup><col style="width:64px"><col style="width:112px"><col style="width:92px"><col style="width:84px"><col style="width:76px"><col style="width:76px"></colgroup><tr><th class="l">월</th><th class="l">제품명<br><span class="sub">HS 코드</span></th><th>수출금액<br><span class="sub">만 USD</span></th><th>수출단가<br><span class="sub">USD/kg</span></th><th>MoM %</th><th>YoY %</th></tr>`+
-    rows.map(r=>`<tr><td class="l" data-sort="${r.month}">${esc(r.month)}</td><td class="l" title="${esc(W.products[r.hs].description)}">${esc(r.product)}<div class="code">${esc(r.hs)}</div></td><td data-sort="${r.export_usd??""}">${fN(r.export_usd==null?null:r.export_usd/10000,2)}</td><td data-sort="${r.unit_usd_kg??""}">${fN(r.unit_usd_kg,2)}</td><td data-sort="${r.mom??""}">${pc(r.mom)}</td><td data-sort="${r.yoy??""}">${pc(r.yoy)}</td></tr>`).join("")+`</table></div></div>`+
-    `<div class="trade-scope">관세청의 매월 15일경 현행화 주기를 감안해 16일부터 전월을 포함합니다. 주가 선택일과 별도로 위 조회일 기준의 최신 수정 통계를 표시합니다. 전월·전년 금액이 0이거나 없으면 증감률은 –입니다.<br>${C.products.map(code=>`HS ${esc(code)}: ${esc(W.products[code].description)}`).join("<br>")}<br>출처: <a href="${esc(W.source)}" target="_blank" rel="noopener noreferrer">관세청·공공데이터포털</a> · 자료 전달: <a href="${esc(W.relay)}" target="_blank" rel="noopener noreferrer">AI Knowledge Hub</a> · <a href="${esc(C.source)}" target="_blank" rel="noopener noreferrer">기업 제품 소개</a></div>`;
+    `<div class="seg" role="group" aria-label="수출 그래프 지표"><button type="button" data-watch-mode="trade" class="${st.watchChartMode==="trade"?"on":""}">수출금액·단가</button><button type="button" data-watch-mode="growth" class="${st.watchChartMode==="growth"?"on":""}">MoM·YoY</button></div>`+
+    `<div class="trade-scope">전국 품목 통계 · 기업별 실적 아님 · 단가 USD/kg (장비 1대당 판가 아님)</div>`+
+    `<div id="watchCharts">${codes.map(code=>{
+      const p=W.products[code],S=watchSeries(W,code),last=S.rows[S.rows.length-1],latest=S.rows.slice().reverse().find(r=>r.export_usd!=null);
+      const status=last?.status==="unpublished"?`${last.month.slice(5)}월 미공표`:last?.status==="provisional"?`${last.month.slice(5)}월 잠정`:"월간 조회본";
+      return `<div class="panel"><div class="sh" style="margin-bottom:4px"><h3>${esc(p.name)}</h3><span class="chip ${["unpublished","provisional"].includes(last?.status)?"c-warn":""}">${esc(status)}</span></div><div class="sub">HS ${esc(code)}${latest?` · 최근 수치 ${esc(latest.month)}`:""}</div><div class="watch-latest"><div>수출금액 (만 USD)<b>${fN(latest?.export_usd==null?null:latest.export_usd/10000,2)}</b></div><div>수출단가 (USD/kg)<b>${fN(latest?.unit_usd_kg,2)}</b></div><div>MoM<b>${pc(latest?.mom)}</b></div><div>YoY<b>${pc(latest?.yoy)}</b></div></div><div class="cv watch-chart"><canvas id="watch_${code}" role="img" aria-label="${esc(p.name)} 24개월 ${st.watchChartMode==="growth"?"MoM·YoY":"수출금액·단가"} 꺾은선 그래프"></canvas></div>${last?.status==="unpublished"?'<div class="sub">마지막 달의 미공표 값은 0으로 그리지 않습니다.</div>':""}</div>`;
+    }).join("")}</div>`+
+    `<details class="crit" style="margin-top:10px"><summary>통계 기준 · HS 코드 · 출처</summary><div class="trade-scope">${esc(W.scope)}. 제품군에 연결한 참고 분류이며 각 기업의 실제 신고코드를 확인한 것은 아닙니다. MoM·YoY는 수출금액 기준입니다. 조회 가능한 전월 자료는 포함하고, 16일 전 전월 값은 잠정으로 구분합니다. 미공표는 빈 구간, 잠정치는 점선·삼각형 점으로 표시하며 자료 갱신 때 재확인합니다. 주가 선택일과 별도로 통계 갱신일 ${esc(W.checked)} 기준의 최신 수정본입니다.<br>${C.products.map(code=>`HS ${esc(code)}: ${esc(W.products[code].description)}`).join("<br>")}<br>출처: <a href="${esc(W.source)}" target="_blank" rel="noopener noreferrer">관세청·공공데이터포털</a> · 자료 전달: <a href="${esc(W.relay)}" target="_blank" rel="noopener noreferrer">AI Knowledge Hub</a> · <a href="${esc(C.source)}" target="_blank" rel="noopener noreferrer">기업 제품 소개</a></div></details>`;
+  codes.forEach(code=>drawWatchChart(W,code,st.watchChartMode));
+}
+function watchSeries(W,code){
+  const rows=(W.products[code]?.rows||[]).slice().sort((a,b)=>a.month.localeCompare(b.month));
+  return {rows,labels:rows.map(r=>r.month.slice(2).replace("-",".")+(r.status&&r.status!=="monthly"?"*":"")),
+    amount:rows.map(r=>r.export_usd==null?null:r.export_usd/10000),price:rows.map(r=>r.unit_usd_kg??null),
+    mom:rows.map(r=>r.mom??null),yoy:rows.map(r=>r.yoy??null)};
+}
+function drawWatchChart(W,code,mode){
+  const S=watchSeries(W,code),growth=mode==="growth",a=css("--accent"),b=css("--warn"),text=css("--muted"),grid=css("--line");
+  const line=(label,data,color,axis,dashed=false)=>({label,data,yAxisID:axis,borderColor:color,backgroundColor:color,borderWidth:2,fill:false,spanGaps:false,
+    borderDash:dashed?[3,3]:[],pointRadius:S.rows.map(r=>r.status==="provisional"?4:2),pointStyle:S.rows.map(r=>r.status==="provisional"?"triangle":"circle"),pointHitRadius:14,
+    segment:{borderDash:ctx=>S.rows[ctx.p1DataIndex]?.status==="provisional"?[6,4]:dashed?[3,3]:[]}});
+  const datasets=growth?[line("MoM (%)",S.mom,a,"value"),line("YoY (%)",S.yoy,b,"value",true)]:[line("수출금액 (만 USD)",S.amount,a,"value"),line("단가 (USD/kg)",S.price,b,"price")];
+  const options=baseOpts();
+  options.plugins.legend={display:true,labels:{color:text,boxWidth:14,font:{size:11}}};
+  options.plugins.tooltip={callbacks:{title:items=>{const r=S.rows[items[0]?.dataIndex];return r?r.month+(r.status==="provisional"?" · 잠정":""):""},
+    label:ctx=>`${ctx.dataset.label}: ${fN(ctx.parsed.y,2)}`,
+    afterBody:items=>{const r=S.rows[items[0]?.dataIndex];return r?(growth?[`수출금액: ${fN(r.export_usd==null?null:r.export_usd/10000,2)}만 USD`,`단가: ${fN(r.unit_usd_kg,2)} USD/kg`]:[`MoM: ${fP(r.mom)}`,`YoY: ${fP(r.yoy)}`]):[]}}};
+  options.scales={x:{grid:{display:false},ticks:{color:text,maxTicksLimit:6,maxRotation:0,font:{size:10}}},
+    value:{type:"linear",position:"left",beginAtZero:!growth,grid:{color:grid},ticks:{color:a,font:{size:10}},title:{display:true,text:growth?"증감률 (%)":"수출금액 (만 USD)",color:a,font:{size:10}}}};
+  if(!growth)options.scales.price={type:"linear",position:"right",beginAtZero:true,grid:{drawOnChartArea:false},ticks:{color:b,font:{size:10}},title:{display:true,text:"단가 (USD/kg)",color:b,font:{size:10}}};
+  mk("watch_"+code,{type:"line",data:{labels:S.labels,datasets},options});
 }
 $("#watchTbl").onclick=e=>{
   if(e.target.closest("a"))return;const row=e.target.closest("tr[data-watch]");if(!row)return;
@@ -870,6 +895,7 @@ $("#watchTbl").onclick=e=>{
   store.set("watchTicker_v1",st.watchTicker);renderWatch();applySorts();
 };
 $("#watchDetail").onclick=e=>{
+  const mode=e.target.closest("button[data-watch-mode]");if(mode){st.watchChartMode=mode.dataset.watchMode==="growth"?"growth":"trade";renderWatchDetail();return}
   const button=e.target.closest("button[data-hs]");if(!button)return;st.watchProduct=button.dataset.hs;renderWatchDetail();applySorts();
 };
 
