@@ -89,6 +89,11 @@ section.sec[data-lazy="pending"] .ctrl{visibility:hidden}
 .sh{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-bottom:12px}
 .sh h2{margin:0;font-size:21px;letter-spacing:-.02em;text-wrap:balance}
 .sh .meta{color:var(--muted);font-size:12.5px}
+.title-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0}
+.names-button{font-size:12px;padding:4px 8px;white-space:nowrap}
+.names-dialog{width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.names-dialog::backdrop{background:#0008}
+.names-text{margin:14px 0;line-height:1.9;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;user-select:text}
 h3{margin:0;font-size:15px;letter-spacing:-.01em}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
 .grid{display:grid;gap:12px}
@@ -314,7 +319,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 수급 ================= -->
   <section class="sec" id="flow">
-    <div class="sh"><h2 id="simTitle">당일 3기관 합산수급</h2>
+    <div class="sh"><div class="title-actions"><h2 id="simTitle">당일 3기관 합산수급</h2><button type="button" class="ib names-button" data-names-from="simTbl">종목명 모아보기</button></div>
       <div class="ctrl">
         <div class="ctrl" role="group" aria-label="3기관 수급 모드">
           <div class="seg" id="simSide" role="group" aria-label="3기관 수급 방향"><button type="button" data-s="buy" class="on">순매수</button><button type="button" data-s="sell">순매도</button></div>
@@ -343,7 +348,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 최다 출현 ================= -->
   <section class="sec" id="appearance">
-    <div class="sh"><h2 id="appTitle">순매수 최다 출현</h2>
+    <div class="sh"><div class="title-actions"><h2 id="appTitle">순매수 최다 출현</h2><button type="button" class="ib names-button" data-names-from="appTbl">종목명 모아보기</button></div>
       <div class="ctrl"><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
       <label class="num">당일 합산강도 <input type="number" id="appMin" step="0.01" inputmode="decimal" placeholder="제한 없음" style="width:84px">% 이상</label>
       <span class="meta">전체 종목 · 금액·순위 제한 없음</span>
@@ -357,7 +362,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 누적강도 ================= -->
   <section class="sec" id="cumulative">
-    <div class="sh"><h2 id="cumTitle">순매수 누적강도</h2>
+    <div class="sh"><div class="title-actions"><h2 id="cumTitle">순매수 누적강도</h2><button type="button" class="ib names-button" data-names-from="cumTbl">종목명 모아보기</button></div>
       <div class="ctrl">
         <label class="num">최근 <input type="number" id="cumDays" min="1" value="10" step="1" inputmode="numeric">거래일</label>
         <div class="seg" id="cumSide"><button type="button" data-s="buy" class="on">순매수</button><button type="button" data-s="sell">순매도</button></div>
@@ -439,6 +444,13 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </details>
   </section>
 </main>
+
+<dialog class="names-dialog" id="namesDialog" aria-labelledby="namesTitle" aria-describedby="namesMeta">
+  <div class="sh"><h3 id="namesTitle">종목명 모아보기</h3><button type="button" class="ib" id="namesClose" autofocus>닫기</button></div>
+  <div class="sub" id="namesMeta"></div>
+  <div class="names-text" id="namesText"></div>
+  <button type="button" class="ib" id="namesCopy">복사</button><span class="sub" id="namesCopyStatus" role="status" style="margin-left:8px"></span>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -771,7 +783,8 @@ async function ensureSection(id){
     try{
       await Promise.all(files.map(sharedFile));
       if(epoch!==lazyEpoch)return;
-      ({market:renderMarket,sector:renderSectors,flow:()=>{renderSim();renderLists()},appearance:renderAppearances,cumulative:renderCumulative,streak:renderStreaks,"daily-rise":renderDailyStocks,watch:renderWatch,track:()=>{renderTrack();renderBT();renderOv()}})[id]();
+      await ({market:renderMarket,sector:renderSectors,flow:()=>{renderSim();renderLists()},appearance:renderAppearances,cumulative:renderCumulative,streak:renderStreaks,"daily-rise":renderDailyStocks,watch:renderWatch,track:()=>{renderTrack();renderBT();renderOv()}})[id]();
+      if(epoch!==lazyEpoch)return;
       section.removeAttribute("data-lazy");section.querySelector(".lazy-notice")?.remove();applySorts();
     }catch(e){
       if(epoch!==lazyEpoch)return;
@@ -1169,7 +1182,7 @@ function renderLists(){
   $("#listTitle").textContent=`수급 주체별 ${w} 상위 ${n}`;
   $("#listLegend").innerHTML=`<span class="chip" style="background:var(${c3});color:var(--fg)">3기관 모두 ${w} 상위${n}</span><span class="chip" style="background:var(${c2});color:var(--fg)">2기관 ${w} 상위${n}</span><span class="chip"><span class="star">★</span> 매집 추적 중</span><span class="chip">강도 = ${w} ÷ 시가총액</span><span class="chip">표 제목 칸을 누르면 정렬</span>`;
   renderSecTop(side,L);
-  $("#lists").innerHTML=INV.map(k=>`<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${k} ${w} 상위${L[k].length}</h3></div>
+  $("#lists").innerHTML=INV.map(k=>`<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${k} ${w} 상위${L[k].length}</h3><button type="button" class="ib names-button" data-names-from="lst_${k}">종목명 모아보기</button></div></div>
     <div class="scroll-y" style="max-height:640px"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
     ${L[k].map((r,i)=>`<tr class="${r.multi===3?(side==="buy"?"hi3":"lo3"):r.multi===2?(side==="buy"?"hi2":"lo2"):""}"><td class="c mut">${i+1}</td>
       <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${r.star?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${stockCodeLink(r.t,r.m,r.n)}${r.sec?" · "+esc(secOf(r.t,r.sec)):""}</div></td>
@@ -1268,6 +1281,7 @@ $("#cumParts").onchange=e=>{if(!e.target.matches("input[data-i]"))return;const b
 /* 연속 매수·매도: 체크한 주체 합계에 방향별로 동일한 연속 규칙 적용.
    기본 조합·전부 체크는 파일에 미리 계산돼 있고, 그 밖의 조합은 로컬 실행기(open_dashboard.bat)에 물어봄 */
 const stkCache={};
+let streakRenderJob=null;
 /* 연속 규칙: tol = 하루 순매도가 시총 대비 tol% 이내면 끊지 않음, gap = 그보다 큰 순매도일도 gap일까지 건너뜀 (둘 다 0 = 순매수 아닌 날 바로 끊김) */
 st.stkTol=+store.get("stkTol",0)||0;st.stkGap=+store.get("stkGap",0)||0;
 async function streakCombo(S,sel){
@@ -1280,7 +1294,7 @@ async function streakCombo(S,sel){
 }
 function renderStreaks(){
   const S=st.D.streaks;
-  if(!S||!S.combos||S.parts.length!==7){$("#stkParts").innerHTML="";$("#streaks").innerHTML='<div class="empty">데이터 갱신(다시 계산) 후 나타납니다.</div>';return}
+  if(!S||!S.combos||S.parts.length!==7){streakRenderJob=null;$("#stkParts").innerHTML="";$("#streaks").innerHTML='<div class="empty">데이터 갱신(다시 계산) 후 나타납니다.</div>';return}
   const side=st.stkSide||"buy",buy=side==="buy",word=buy?"순매수":"순매도",opposite=buy?"순매도":"순매수";
   $("#stkMeta").textContent=`체크한 주체의 ${word} 합계 기준 · 연속기간 누적 ${buy?"매수":"매도"}강도순 · 개수는 '수급' 탭의 '상위' 숫자`;
   if(!st.stkSel||st.stkSel.length!==S.parts.length)st.stkSel=store.get("stkSel_v2",S.default);
@@ -1296,11 +1310,11 @@ function renderStreaks(){
   const sel=st.stkSel,date=st.D.date,rule=`${st.stkTol}|${st.stkGap}`;
   $("#stkTitle").textContent=`연속 ${buy?"매수":"매도"} (${S.parts.filter((p,i)=>sel[i]==="1").join("+")})`;
   if(!(buy?S:S.sell)?.combos[sel]||st.stkTol||st.stkGap)$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
-  streakCombo(S,sel).then(R=>{
+  return streakRenderJob=streakCombo(S,sel).then(R=>{
     if(st.D.date!==date||st.stkSel!==sel||(st.stkSide||"buy")!==side||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙·방향이 바뀜
     if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (사모·연기금·투신으로 만든 조합과 전체 체크는, 규칙 0·0 이면 휴대폰에서도 바로 볼 수 있습니다)</div>';return}
     const C=R.combos[sel],tk=R.tk,n=st.listN;
-    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><h3>${title} 상위${rows.length}</h3></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
+    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목명 모아보기</button></div></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 ${word}<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
       ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(t,k[0])}</span><div class="code">${stockCodeLink(t,k[2],k[0])}</div></td>
       <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · ${opposite} ${skip}일 포함`:""}</span></div></td>
@@ -1485,6 +1499,36 @@ document.addEventListener("dblclick",e=>{
   el.style.maxHeight=el.style.maxHeight==="none"?"":"none";
   if(k){sizes[k]=el.style.maxHeight;store.set("sizes",sizes)}
 });
+
+/* 표의 현재 순서·표시 조건 그대로, 클릭할 때만 종목명을 모은다. */
+function tableStockNames(source){
+  return [...new Set(Array.from(source?.querySelectorAll(".nm")||[],el=>el.textContent.trim()).filter(Boolean))];
+}
+async function openNameCollection(button){
+  if(!st.D)return;
+  const id=button.dataset.namesFrom,section=button.closest("section.sec");
+  button.disabled=true;
+  try{
+    if(st.lazy&&section?.dataset.lazy==="pending")await ensureSection(section.id);
+    if(section?.dataset.lazy==="pending")return;
+    if((id==="stk_e"||id==="stk_c")&&streakRenderJob)await streakRenderJob;
+    const source=document.getElementById(id),names=tableStockNames(source);
+    const tableTitle=source?.closest(".tw")?.querySelector("h3")?.textContent,sectionTitle=section?.querySelector("h2")?.textContent;
+    const title=(id==="stk_e"||id==="stk_c")?[sectionTitle,tableTitle].filter(Boolean).join(" · "):(tableTitle||sectionTitle||"종목명");
+    $("#namesTitle").textContent=title+" · 종목명 모아보기";
+    $("#namesMeta").textContent=`${st.D.date} · ${names.length}종목 · 현재 표 순서 · 중복 종목은 한 번만 표시`;
+    $("#namesText").textContent=names.length?names.join(", "):"표에 표시된 종목이 없습니다.";
+    $("#namesCopy").disabled=!names.length;$("#namesCopyStatus").textContent="";
+    if(!$("#namesDialog").open)$("#namesDialog").showModal();
+  }finally{button.disabled=false}
+}
+document.addEventListener("click",e=>{const button=e.target.closest("button[data-names-from]");if(button)openNameCollection(button)});
+$("#namesClose").onclick=()=>$("#namesDialog").close();
+$("#namesDialog").onclick=e=>{if(e.target===$("#namesDialog"))$("#namesDialog").close()};
+$("#namesCopy").onclick=async()=>{
+  try{await navigator.clipboard.writeText($("#namesText").textContent);$("#namesCopyStatus").textContent="복사했습니다."}
+  catch(e){const selection=window.getSelection();selection.removeAllRanges();selection.selectAllChildren($("#namesText"));$("#namesCopyStatus").textContent="종목명을 선택했습니다. 길게 눌러 복사해주세요."}
+};
 
 /* ===== 표 정렬 (제목 칸 클릭) ===== */
 const sorts={};
