@@ -122,13 +122,13 @@ tr:last-child td{border-bottom:0}
 th{cursor:pointer;user-select:none} th:hover{color:var(--accent)} th::after{content:attr(data-arrow);color:var(--accent)}
 th.l,td.l{text-align:left} th.c,td.c{text-align:center}
 td .nm{font-weight:600}
-#riseTbl{width:680px;table-layout:fixed}
+#riseTbl{width:696px;table-layout:fixed}
 #riseTbl th,#riseTbl td{padding:6px 4px;white-space:normal;overflow-wrap:anywhere}
 #riseTbl th{word-break:keep-all}
 #riseTbl td:nth-child(2),#riseTbl td:nth-child(n+5){white-space:nowrap;font-variant-numeric:tabular-nums}
 #riseTbl th:nth-child(4),#riseTbl td:nth-child(4){text-align:left}
 #riseTbl td:nth-child(4) .stack{align-items:flex-start}
-#riseTbl td:nth-child(4) .sub{white-space:normal}
+#riseTbl td:nth-child(4) .sub{white-space:nowrap;overflow-wrap:normal;word-break:keep-all;font-size:11px}
 #riseTbl .nm{display:block;white-space:normal;overflow-wrap:anywhere}
 #riseTbl .code{white-space:nowrap;font-size:10.5px}
 #watchTbl{width:416px;table-layout:fixed}
@@ -380,14 +380,17 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   <!-- ================= 당일 상승률 ================= -->
   <section class="sec" id="daily-rise">
     <div class="sh"><h2>당일 상승률</h2>
+      <button type="button" class="ib" id="riseToggle" aria-controls="riseBody" aria-expanded="false" hidden>상승 표 펼치기</button>
+    </div>
+    <div id="riseBody" hidden>
       <div class="ctrl" id="riseMarkets" role="group" aria-label="상승률 표 시장 선택">
         <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KS" checked style="width:auto"> 코스피</label>
         <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KQ" checked style="width:auto"> 코스닥</label>
       </div>
-    </div>
     <div class="sub" id="riseMeta" style="margin-bottom:8px"></div>
     <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="riseTbl"></table></div></div>
     <div class="muted-note">선택 거래일의 전체 종목 · 당일 상승률 내림차순 · 피·닥 대비는 코스피·코스닥 대비 초과수익(%p) · 기관은 기관 전체 순매수 기준 · 강도 = 순매수액 ÷ 당일 시가총액 × 100 (순매도 상계) · 미수집 수급은 –</div>
+    </div>
   </section>
 
   <!-- ================= 관심 ================= -->
@@ -644,6 +647,7 @@ function initialDate(dates,hash,latest){
 }
 async function init(){
   st.lazy=!!window.KD_ENC;
+  syncRiseDisclosure();
   st.section=validSection(store.get("lastSection_v1","market"));
   try{if(window.kdEncReady)await window.kdEncReady}catch(e){alertBox("자료를 열지 못했습니다. 인터넷 연결 후 새로고침해주세요.");$("#upd").onclick=()=>location.reload();return}
   if(window.kdEncLock){const b=document.createElement("button");b.className="ib icon-btn";b.textContent="🔒";b.setAttribute("aria-label","잠금");b.title="이 기기에 저장된 비밀번호를 지우고 잠급니다";b.onclick=window.kdEncLock;$(".datebox").insertBefore(b,$("#updBox"))}
@@ -759,6 +763,7 @@ function sharedFile(name){
 }
 async function ensureSection(id){
   id=validSection(id);
+  if(id==="daily-rise"&&!riseIsOpen()){renderDailyStocks();return}
   if(sectionJobs.has(id))return sectionJobs.get(id);
   const epoch=lazyEpoch,section=document.getElementById(id);
   const files={market:["series.js"],sector:["bubble.js"],appearance:["appearances.js","series.js"],cumulative:["appearances.js","series.js"],streak:["series.js"],watch:["watch_trade.js"],track:["events.js","series.js"]}[id]||[];
@@ -781,6 +786,7 @@ async function ensureSection(id){
 async function renderLazy(){
   lazyObserver?.disconnect();lazyEpoch++;sectionJobs.clear();
   document.querySelectorAll("main section.sec").forEach(section=>{
+    if(section.id==="daily-rise"&&!riseIsOpen()){renderDailyStocks();return}
     section.dataset.lazy="pending";
     let notice=section.querySelector(".lazy-notice");if(!notice){notice=document.createElement("div");notice.className="lazy-notice";section.appendChild(notice)}
     notice.textContent="자료 준비 중…";
@@ -815,19 +821,35 @@ function baseOpts(extra){
 }
 
 /* 전체 종목의 당일 상승률. 다른 수급 표의 상위 개수·강도·기관 선택과 독립적이다. */
+function riseIsOpen(){return st.riseExpanded??=!stockMobile()}
+function syncRiseDisclosure(){
+  const open=riseIsOpen(),button=$("#riseToggle");
+  $("#riseBody").hidden=!open;
+  button.disabled=!st.D;
+  button.hidden=!stockMobile();button.setAttribute("aria-expanded",String(open));
+  button.textContent=open?"상승 표 접기":"상승 표 펼치기";
+}
 function dailyStockRows(block,markets){
   return (block?.rows||[]).filter(r=>markets.has(r.m)).slice().sort((a,b)=>
     (b.r1??-Infinity)-(a.r1??-Infinity)||String(a.t).localeCompare(String(b.t)));
 }
 function renderDailyStocks(){
+  syncRiseDisclosure();
+  if(!riseIsOpen()){
+    $("#riseTbl").innerHTML="";
+    const section=document.getElementById("daily-rise");
+    section.removeAttribute("data-lazy");section.querySelector(".lazy-notice")?.remove();
+    return;
+  }
   const block=st.D.daily_stocks,rows=dailyStockRows(block,st.riseMarkets);
   $("#riseMarkets").querySelectorAll("input[data-market]").forEach(x=>x.checked=st.riseMarkets.has(x.dataset.market));
   const missing=block?.missing||[];
   $("#riseMeta").textContent=`${st.D.date} · ${rows.length.toLocaleString("ko-KR")}종목 · 당일 상승률순`+(missing.length?` · ${missing.join("·")} 수급 미수집 (갱신 후 표시)`:"");
   const strength=v=>`<td data-sort="${v??""}">${pc(v,3)}</td>`;
-  $("#riseTbl").innerHTML=`<colgroup><col style="width:136px"><col style="width:72px"><col style="width:72px"><col style="width:136px"><col style="width:88px"><col style="width:88px"><col style="width:88px"></colgroup><tr><th class="l">종목명</th><th>시총<span class="sub"> (억원)</span></th><th class="l">섹터</th><th>상승률<br><span class="sub">피·닥 대비</span></th><th>기관+외국인<br><span class="sub">매수강도</span></th><th>기관 매수강도<br><span class="sub">기관 전체</span></th><th>외국인 매수강도</th></tr>`+
+  $("#riseTbl").innerHTML=`<colgroup><col style="width:136px"><col style="width:72px"><col style="width:72px"><col style="width:152px"><col style="width:88px"><col style="width:88px"><col style="width:88px"></colgroup><tr><th class="l">종목명</th><th>시총<span class="sub"> (억원)</span></th><th class="l">섹터</th><th>상승률<br><span class="sub">피·닥 대비</span></th><th>기관+외국인<br><span class="sub">매수강도</span></th><th>기관 매수강도<br><span class="sub">기관 전체</span></th><th>외국인 매수강도</th></tr>`+
     (rows.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}">${fN(r.cap)}</td><td class="l">${esc(secOf(r.t,r.sec))||"–"}</td>${flowReturnCell(r)}${strength(r.total)}${strength(r.inst)}${strength(r.foreign)}</tr>`).join("")||`<tr><td colspan="7" class="empty">${!block?"데이터 갱신 후 표시됩니다.":st.riseMarkets.size?"표시할 종목이 없습니다.":"코스피 또는 코스닥을 선택해주세요."}</td></tr>`);
 }
+$("#riseToggle").onclick=()=>{if(!st.D)return;st.riseExpanded=!riseIsOpen();renderDailyStocks();applySorts()};
 $("#riseMarkets").onchange=e=>{
   const market=e.target.dataset.market;if(!["KS","KQ"].includes(market))return;
   if(e.target.checked)st.riseMarkets.add(market);else st.riseMarkets.delete(market);
