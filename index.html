@@ -332,7 +332,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 수급 ================= -->
   <section class="sec" id="flow">
-    <div class="sh"><div class="title-actions"><h2 id="simTitle">당일 3기관 합산수급</h2><button type="button" class="ib names-button" data-names-from="simTbl">종목코드 모아보기</button></div>
+    <div class="sh"><div class="title-actions"><h2 id="simTitle">당일 3기관 합산수급</h2><button type="button" class="ib names-button" data-names-from="simTbl">종목명 모아보기</button></div>
       <div class="ctrl">
         <div class="ctrl" role="group" aria-label="3기관 수급 모드">
           <div class="seg" id="simSide" role="group" aria-label="3기관 수급 방향"><button type="button" data-s="buy" class="on">순매수</button><button type="button" data-s="sell">순매도</button></div>
@@ -361,7 +361,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 최다 출현 ================= -->
   <section class="sec" id="appearance">
-    <div class="sh"><div class="title-actions"><h2 id="appTitle">순매수 최다 출현</h2><button type="button" class="ib names-button" data-names-from="appTbl">종목코드 모아보기</button></div>
+    <div class="sh"><div class="title-actions"><h2 id="appTitle">순매수 최다 출현</h2><button type="button" class="ib names-button" data-names-from="appTbl">종목명 모아보기</button></div>
       <div class="ctrl"><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
       <label class="num">당일 합산강도 <input type="number" id="appMin" step="0.01" inputmode="decimal" placeholder="제한 없음" style="width:84px">% 이상</label>
       <span class="meta">전체 종목 · 금액·순위 제한 없음</span>
@@ -375,7 +375,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 누적강도 ================= -->
   <section class="sec" id="cumulative">
-    <div class="sh"><div class="title-actions"><h2 id="cumTitle">순매수 누적강도</h2><button type="button" class="ib names-button" data-names-from="cumTbl">종목코드 모아보기</button></div>
+    <div class="sh"><div class="title-actions"><h2 id="cumTitle">순매수 누적강도</h2><button type="button" class="ib names-button" data-names-from="cumTbl">종목명 모아보기</button></div>
       <div class="ctrl">
         <label class="num">최근 <input type="number" id="cumDays" min="1" value="10" step="1" inputmode="numeric">거래일</label>
         <div class="seg" id="cumSide"><button type="button" data-s="buy" class="on">순매수</button><button type="button" data-s="sell">순매도</button></div>
@@ -458,7 +458,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   </section>
 </main>
 
-<dialog class="names-dialog" id="namesDialog" aria-label="종목코드 목록">
+<dialog class="names-dialog" id="namesDialog" aria-label="종목명 목록">
   <div class="names-text" id="namesText"></div>
 </dialog>
 
@@ -1192,7 +1192,7 @@ function renderLists(){
   $("#listTitle").textContent=`수급 주체별 ${w} 상위 ${n}`;
   $("#listLegend").innerHTML=`<span class="chip" style="background:var(${c3});color:var(--fg)">3기관 모두 ${w} 상위${n}</span><span class="chip" style="background:var(${c2});color:var(--fg)">2기관 ${w} 상위${n}</span><span class="chip"><span class="star">★</span> 매집 추적 중</span><span class="chip">강도 = ${w} ÷ 시가총액</span><span class="chip">표 제목 칸을 누르면 정렬</span>`;
   renderSecTop(side,L);
-  $("#lists").innerHTML=INV.map(k=>`<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${k} ${w} 상위${L[k].length}</h3><button type="button" class="ib names-button" data-names-from="lst_${k}">종목코드 모아보기</button></div></div>
+  $("#lists").innerHTML=INV.map(k=>`<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${k} ${w} 상위${L[k].length}</h3><button type="button" class="ib names-button" data-names-from="lst_${k}">종목명 모아보기</button></div></div>
     <div class="scroll-y" style="max-height:640px"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
     ${L[k].map((r,i)=>`<tr class="${r.multi===3?(side==="buy"?"hi3":"lo3"):r.multi===2?(side==="buy"?"hi2":"lo2"):""}"><td class="c mut">${i+1}</td>
       <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${r.star?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${stockCodeLink(r.t,r.m,r.n)}${r.sec?" · "+esc(secOf(r.t,r.sec)):""}</div></td>
@@ -1324,7 +1324,7 @@ function renderStreaks(){
     if(st.D.date!==date||st.stkSel!==sel||(st.stkSide||"buy")!==side||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙·방향이 바뀜
     if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (사모·연기금·투신으로 만든 조합과 전체 체크는, 규칙 0·0 이면 휴대폰에서도 바로 볼 수 있습니다)</div>';return}
     const C=R.combos[sel],tk=R.tk,n=st.listN;
-    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목코드 모아보기</button></div></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
+    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목명 모아보기</button></div></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 ${word}<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
       ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(t,k[0])}</span><div class="code">${stockCodeLink(t,k[2],k[0])}</div></td>
       <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · ${opposite} ${skip}일 포함`:""}</span></div></td>
@@ -1510,9 +1510,9 @@ document.addEventListener("dblclick",e=>{
   if(k){sizes[k]=el.style.maxHeight;store.set("sizes",sizes)}
 });
 
-/* 표의 현재 순서·표시 조건 그대로, 클릭할 때만 종목코드를 모은다. */
-function tableStockCodes(source){
-  return [...new Set(Array.from(source?.querySelectorAll(".code")||[],el=>stockCode(el.querySelector("a.stock-link")?.textContent.trim())).filter(Boolean))];
+/* 표의 현재 순서·표시 조건 그대로, 클릭할 때만 종목명을 모은다. */
+function tableStockNames(source){
+  return [...new Set(Array.from(source?.querySelectorAll(".nm")||[],el=>el.textContent.trim()).filter(Boolean))];
 }
 async function openNameCollection(button){
   if(!st.D)return;
@@ -1522,12 +1522,12 @@ async function openNameCollection(button){
     if(st.lazy&&section?.dataset.lazy==="pending")await ensureSection(section.id);
     if(section?.dataset.lazy==="pending")return;
     if((id==="stk_e"||id==="stk_c")&&streakRenderJob)await streakRenderJob;
-    const source=document.getElementById(id),names=tableStockCodes(source);
+    const source=document.getElementById(id),names=tableStockNames(source);
     if(!names.length){alertBox("표에 표시된 종목이 없습니다.");return}
     const tableTitle=source?.closest(".tw")?.querySelector("h3")?.textContent,sectionTitle=section?.querySelector("h2")?.textContent;
-    const title=(id==="stk_e"||id==="stk_c")?[sectionTitle,tableTitle].filter(Boolean).join(" · "):(tableTitle||sectionTitle||"종목코드");
-    $("#namesDialog").setAttribute("aria-label",title+" · 종목코드 목록");
-    $("#namesText").textContent=names.join(", ");
+    const title=(id==="stk_e"||id==="stk_c")?[sectionTitle,tableTitle].filter(Boolean).join(" · "):(tableTitle||sectionTitle||"종목명");
+    $("#namesDialog").setAttribute("aria-label",title+" · 종목명 목록");
+    $("#namesText").textContent=names.join(" ");
     if(!$("#namesDialog").open)$("#namesDialog").showModal();
   }finally{button.disabled=false}
 }
