@@ -1616,7 +1616,7 @@ async function navigateSection(id,target=id,ticker=null){
   if(!el||el.hidden)el=document.getElementById(id);
   if(el.tagName==="TABLE")el=el.closest(".tw")||el;
   const position=el.getBoundingClientRect().top+window.scrollY;
-  setHeaderCompact(position<window.scrollY);
+  setHeaderCompact(position>window.scrollY);
   const gap=$("#topBar").getBoundingClientRect().bottom+12;
   const top=Math.max(0,position-gap);
   headerScrollY=Math.max(0,window.scrollY);
@@ -1628,7 +1628,7 @@ function updateHeaderScroll(){
   const max=Math.max(0,document.documentElement.scrollHeight-window.innerHeight),y=Math.min(max,Math.max(0,window.scrollY||0));
   const delta=y-headerScrollY;
   if(y<=4){setHeaderCompact(false);headerScrollY=y}
-  else if(Math.abs(delta)>=8){setHeaderCompact(delta<0);headerScrollY=y}
+  else if(Math.abs(delta)>=8){setHeaderCompact(delta>0);headerScrollY=y}
   let cur=secs[0];const edge=$("#topBar").getBoundingClientRect().bottom+32;
   secs.forEach(id=>{if(document.getElementById(id).getBoundingClientRect().top<edge)cur=id});
   if(st.D&&cur!==st.section)rememberSection(cur);
