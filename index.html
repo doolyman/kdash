@@ -41,7 +41,16 @@ button,select,input,textarea{font:inherit;color:inherit}
 .wrap{max-width:1440px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
 
 /* top bar */
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.bar{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 96%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-top{display:grid;grid-template-rows:1fr}
+.bar-top-clip{min-height:0;overflow:hidden}
+.bar.compact .bar-top{grid-template-rows:0fr;visibility:hidden}
+#barSpace{height:136px;overflow-anchor:none}
+.nav-wrap{position:relative;max-width:1440px;margin:0 auto;padding:4px 16px 8px}
+.subnav{position:absolute;top:100%;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 var(--r) var(--r);box-shadow:0 8px 20px #0002;max-height:60dvh;overflow:auto}
+.subnav[hidden]{display:none}
+.subnav a{padding:8px 10px;color:var(--fg);background:var(--panel2);border-radius:6px;text-decoration:none;font-size:13px}
+.subnav a:hover{background:var(--accent-soft);color:var(--accent)}
 .bar-in{max-width:1440px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 .brand{font-weight:700;font-size:17px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:8px}
 .brand small{font-weight:500;font-size:12px;color:var(--muted)}
@@ -76,12 +85,12 @@ button,select,input,textarea{font:inherit;color:inherit}
 #upd[aria-busy="true"] svg{animation:sp 1s linear infinite}
 #upd[data-state="error"]{color:var(--risk)}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
-nav.tabs{display:flex;gap:4px;overflow-x:auto;margin-left:auto}
+nav.tabs{display:flex;gap:4px;overflow-x:auto}
 nav.tabs a{padding:6px 12px;border-radius:999px;color:var(--muted);text-decoration:none;font-weight:600;white-space:nowrap}
-nav.tabs a:hover,nav.tabs a.on{background:var(--accent-soft);color:var(--accent)}
+nav.tabs a:hover,nav.tabs a.on,nav.tabs a[aria-expanded="true"]{background:var(--accent-soft);color:var(--accent)}
 .banner{background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);padding:8px 12px;border-radius:8px;margin-top:12px;font-size:13px}
 
-section.sec{padding-top:28px;scroll-margin-top:70px}
+section.sec{padding-top:28px;scroll-margin-top:var(--jump-gap,136px)}
 section.sec[data-lazy="pending"]{min-height:75vh}
 section.sec[data-lazy="pending"]>:not(.sh):not(.lazy-notice){display:none}
 section.sec[data-lazy="pending"] .ctrl{visibility:hidden}
@@ -226,8 +235,8 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 @media (prefers-reduced-motion:reduce){*{transition:none!important}#upd[aria-busy="true"] svg{animation:none}}
 </style>
 
-<header class="bar">
-  <div class="bar-in">
+<header class="bar" id="topBar">
+  <div class="bar-top" id="barTop"><div class="bar-top-clip"><div class="bar-in" id="barControls">
     <div class="brand">기관 수급 레이더 <small id="gen"></small></div>
     <div class="datebox">
       <button class="ib" id="prev" aria-label="이전 거래일">◀</button>
@@ -235,11 +244,15 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <button class="ib" id="next" aria-label="다음 거래일">▶</button>
       <span class="upd" id="updBox"><button class="ib icon-btn" id="upd" type="button" aria-label="새로고침" title="새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11a9 9 0 0 1 15.4-6.4L21 7M21 2v5h-5M21 13a9 9 0 0 1-15.4 6.4L3 17M3 22v-5h5"/></svg></button><span class="sr-only" id="updMsg" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </div>
-    <nav class="tabs" id="tabs">
+  </div></div></div>
+  <div class="nav-wrap" id="navWrap">
+    <nav class="tabs" id="tabs" aria-label="대시보드 메뉴">
       <a href="#market">시장</a><a href="#sector">섹터</a><a href="#flow">수급</a><a href="#appearance">출현</a><a href="#cumulative">누적</a><a href="#streak">연속</a><a href="#daily-rise">상승</a><a href="#watch">관심</a><a href="#track">추적</a><a href="backtest.html">전략</a>
     </nav>
+    <nav class="subnav" id="subnav" aria-label="하위 항목" hidden></nav>
   </div>
 </header>
+<div id="barSpace" aria-hidden="true"></div>
 <div class="calendar" id="dateCalendar" role="dialog" aria-label="분석 기준일 선택" hidden>
   <div class="cal-head"><button class="ib icon-btn" id="calPrev" type="button" aria-label="이전 달">‹</button><b id="calMonth" aria-live="polite"></b><button class="ib icon-btn" id="calNext" type="button" aria-label="다음 달">›</button></div>
   <div class="cal-week" aria-hidden="true"><span class="cal-red">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="cal-blue">토</span></div>
@@ -255,11 +268,11 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="sh"><h2>시장 · 증시자금</h2><span class="meta" id="mktMeta"></span></div>
     <div class="grid g4" id="mktCards"></div>
     <div class="grid g2" style="margin-top:12px">
-      <div class="panel">
+      <div class="panel" id="marketIndex">
         <div class="sh" style="margin-bottom:6px"><h3>지수 등락률</h3></div>
         <div class="tw" style="border:0"><table id="idxTbl"></table></div>
       </div>
-      <div class="panel">
+      <div class="panel" id="marketRisk">
         <div class="sh" style="margin-bottom:6px"><h3>증시자금 위험도</h3>
           <div class="riskscale"><span style="--c:var(--rk0)">0–1 안정</span><span style="--c:var(--rk1)">2 주의</span><span style="--c:var(--rk2)">3+ 위험</span></div></div>
         <div class="riskwrap"><div id="riskBadge"></div><div style="min-width:0"><div id="riskLevel"></div><div id="riskWhy" class="sub"></div></div></div>
@@ -277,14 +290,14 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       </div>
     </div>
     <div class="grid g4" id="fundCards" style="margin-top:12px"></div>
-    <div class="panel" style="margin-top:12px">
+    <div class="panel" id="marketTrade" style="margin-top:12px">
       <div class="sh" style="margin-bottom:8px"><div><h3>시장 거래대금 추이 <span class="sub" id="tvMeta"></span></h3>
         <div class="legend"><span><i style="background:var(--faint)"></i>합산 거래대금</span><span><i style="background:var(--warn)"></i>5일 평균</span><span><i style="background:var(--ix1)"></i>코스피(오른쪽 안쪽 축)</span><span><i style="background:var(--ix2)"></i>코스닥(오른쪽 바깥 축)</span></div></div>
         <div class="seg" id="tvRange"><button data-n="0" class="on">전체</button><button data-n="250">1년</button><button data-n="125">6개월</button><button data-n="62">3개월</button></div>
       </div>
       <div class="cv tall"><canvas id="tvChart"></canvas></div>
     </div>
-    <div class="panel" style="margin-top:12px">
+    <div class="panel" id="marketFunds" style="margin-top:12px">
       <div class="sh" style="margin-bottom:8px"><h3>증시자금 추이 <span class="sub" id="fundMeta">(조원)</span></h3>
         <div class="seg" id="fundRange"><button data-n="0" class="on">전체</button><button data-n="250">1년</button><button data-n="125">6개월</button><button data-n="62">3개월</button></div>
       </div>
@@ -296,12 +309,12 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   <section class="sec" id="sector">
     <div class="sh"><h2>섹터 순위 · 패턴</h2><span class="meta">대표주(시총 상위 최대 12종목) 동일가중 · 시장 대비 초과수익 기준</span></div>
     <div class="grid g4" id="secCards"></div>
-    <div class="sh" style="margin-top:18px"><h3>섹터 추세 <span class="sub">첫 거래일 100 기준 20일 누적</span></h3>
+    <div class="sh" id="sectorTrend" style="margin-top:18px"><h3>섹터 추세 <span class="sub">첫 거래일 100 기준 20일 누적</span></h3>
       <span class="meta">차트 칸을 누른 뒤 아래 표에서 섹터 행을 누르면 바뀝니다</span></div>
     <div class="grid g3" id="secCharts"></div>
     <div class="tw scroll-y" style="margin-top:12px"><table id="secTbl"></table></div>
 
-    <div class="panel" style="margin-top:16px">
+    <div class="panel" id="sectorLeaders" style="margin-top:16px">
       <div class="sh"><div><h3>주도섹터 트렌드</h3><div class="sub" id="bubMeta"></div></div>
         <div class="ctrl">
           <div class="seg" id="bubSide"><button data-s="b" class="on">순매수</button><button data-s="s">순매도</button></div>
@@ -411,7 +424,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="sh"><h2>매집 추적 중</h2><span class="meta" id="trkMeta"></span></div>
     <div class="chips" id="trkFilter" style="margin-bottom:8px"></div>
     <div class="tw scroll-y"><table id="trkTbl"></table></div>
-    <div class="panel" style="margin-top:12px">
+    <div class="panel" id="trackCompare" style="margin-top:12px">
       <div class="sh"><h3>사후검증 비교 <span class="sub">추적 표의 종목명 외 영역을 눌러 최대 5개</span></h3></div>
       <div class="cmpbar" id="cmpChips"></div>
       <div class="grid g2">
@@ -419,7 +432,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
         <div><div class="lbl">3기관 누적 순매수 (백만원)</div><div class="cv"><canvas id="cmpFlow"></canvas></div></div>
       </div>
     </div>
-    <div class="panel" style="margin-top:12px">
+    <div class="panel" id="trackResults" style="margin-top:12px">
       <div class="sh"><div><h3>감지 성과 검증</h3><div class="sub" id="btMeta"></div></div>
         <div class="ctrl"><label class="num">최근 <input type="number" id="btN" min="1" step="5" inputmode="numeric">거래일</label><button class="ib" id="btAll">전체</button></div></div>
       <div class="tw" style="border:0"><table id="btSum"></table></div>
@@ -1547,12 +1560,98 @@ document.addEventListener("click",e=>{
   sorts[tb.id]={col,dir};sortTable(tb,col,dir);
 });
 
-/* nav highlight */
+/* 고정 메뉴 · 스크롤 방향에 따른 상단 정보 · 하위 항목 이동 */
 const secs=["market","sector","flow","appearance","cumulative","streak","daily-rise","watch","track"];
-addEventListener("scroll",()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el.getBoundingClientRect().top<120)cur=id});
+let subnavSection=null,navRequest=0,headerScrollY=Math.max(0,window.scrollY||0),headerFrame=null;
+function syncHeaderSpace(){
+  const bar=$("#topBar"),top=$("#barControls"),nav=$("#navWrap");
+  const inset=Math.max(0,bar.getBoundingClientRect().top);
+  // 접어도 본문 위치를 유지해 스크롤 방향이 뒤집히거나 화면이 튀지 않게 한다.
+  $("#barSpace").style.height=(top.offsetHeight+nav.offsetHeight+inset+1)+"px";
+  document.documentElement.style.setProperty("--jump-gap",(bar.getBoundingClientRect().bottom+12)+"px");
+}
+function setHeaderCompact(compact){
+  const bar=$("#topBar"),top=$("#barTop");
+  if(bar.classList.contains("compact")===compact)return;
+  bar.classList.toggle("compact",compact);top.inert=compact;
+  if(compact)closeCalendar(false);
+  syncHeaderSpace();
+}
+function subnavItems(id){
+  const word=st.side==="sell"?"순매도":"순매수",stkWord=st.stkSide==="sell"?"매도":"매수";
+  return ({
+    market:[["market","시장 요약"],["marketIndex","지수 등락률"],["marketRisk","증시자금 위험도"],["marketTrade","거래대금 추이"],["marketFunds","증시자금 추이"]],
+    sector:[["sector","섹터 순위"],["sectorTrend","섹터 추세"],["secTbl","섹터 순위표"],["sectorLeaders","주도섹터 트렌드"]],
+    flow:[["flow",$("#simTitle").textContent],["secTopTitle","섹터 TOP 7"],...INV.map(k=>["lst_"+k,k+" "+word+" 상위"])],
+    streak:[["stk_e","1일 이상 연속 "+stkWord],["stk_c",(st.D?.streaks?.confirm||5)+"일 이상 연속 "+stkWord]],
+    watch:[["watch","관심종목"],...(window.KD_WATCH?.companies||[{t:"086670",n:"비엠티"},{t:"041830",n:"인바디"}]).map(c=>["watchDetail",c.n+" 월별 수출",c.t])],
+    track:[["track","매집 추적 중"],["trackCompare","사후검증 비교"],["trackResults","감지 성과 검증"]]
+  })[id]||[];
+}
+function closeSubnav(focus=false){
+  const parent=subnavSection&&document.querySelector(`#tabs a[href="#${subnavSection}"]`);
+  $("#subnav").hidden=true;subnavSection=null;
+  document.querySelectorAll('#tabs a[aria-expanded]').forEach(a=>a.setAttribute("aria-expanded","false"));
+  if(focus)parent?.focus();
+}
+function openSubnav(id,items){
+  if(subnavSection===id){closeSubnav();return}
+  closeCalendar(false);closeSubnav();subnavSection=id;
+  const box=$("#subnav"),parent=document.querySelector(`#tabs a[href="#${id}"]`);
+  parent.setAttribute("aria-expanded","true");
+  box.setAttribute("aria-label",parent.textContent+" 하위 항목");
+  box.innerHTML=items.map(([target,label,ticker])=>`<a href="#${esc(target)}" data-nav-section="${id}" data-nav-target="${esc(target)}"${ticker?` data-nav-ticker="${esc(ticker)}"`:""}>${esc(label)}</a>`).join("");
+  box.hidden=false;
+}
+async function navigateSection(id,target=id,ticker=null){
+  const request=++navRequest;closeSubnav();rememberSection(id);
+  if(st.lazy&&st.D)await ensureSection(id);
+  if(request!==navRequest)return;
+  if(id==="streak"&&streakRenderJob)await streakRenderJob;
+  if(request!==navRequest)return;
+  if(ticker&&st.D&&window.KD_WATCH?.companies.some(c=>c.t===ticker)){
+    st.watchTicker=ticker;st.watchProduct="";store.set("watchTicker_v1",ticker);renderWatch();applySorts();
+  }
+  let el=document.getElementById(target);
+  if(!el||el.hidden)el=document.getElementById(id);
+  if(el.tagName==="TABLE")el=el.closest(".tw")||el;
+  const position=el.getBoundingClientRect().top+window.scrollY;
+  setHeaderCompact(position<window.scrollY);
+  const gap=$("#topBar").getBoundingClientRect().bottom+12;
+  const top=Math.max(0,position-gap);
+  headerScrollY=Math.max(0,window.scrollY);
+  window.scrollTo({top,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
+  el.setAttribute("tabindex","-1");el.focus({preventScroll:true});
+}
+function updateHeaderScroll(){
+  headerFrame=null;
+  const max=Math.max(0,document.documentElement.scrollHeight-window.innerHeight),y=Math.min(max,Math.max(0,window.scrollY||0));
+  const delta=y-headerScrollY;
+  if(y<=4){setHeaderCompact(false);headerScrollY=y}
+  else if(Math.abs(delta)>=8){setHeaderCompact(delta<0);headerScrollY=y}
+  let cur=secs[0];const edge=$("#topBar").getBoundingClientRect().bottom+32;
+  secs.forEach(id=>{if(document.getElementById(id).getBoundingClientRect().top<edge)cur=id});
   if(st.D&&cur!==st.section)rememberSection(cur);
-  document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur))},{passive:true});
-document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();const id=a.getAttribute("href").slice(1);rememberSection(id);if(st.lazy)ensureSection(id);document.getElementById(id).scrollIntoView({behavior:"smooth"})}));
+  document.querySelectorAll("#tabs a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur));
+}
+addEventListener("scroll",()=>{if(headerFrame===null)headerFrame=requestAnimationFrame(updateHeaderScroll)},{passive:true});
+document.querySelectorAll('#tabs a[href^="#"]').forEach(a=>{
+  const id=a.getAttribute("href").slice(1);
+  if(subnavItems(id).length){a.setAttribute("aria-controls","subnav");a.setAttribute("aria-expanded","false")}
+  a.addEventListener("click",e=>{
+    if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
+    e.preventDefault();navRequest++;const items=subnavItems(id);
+    if(items.length)openSubnav(id,items);else navigateSection(id);
+  });
+  a.addEventListener("keydown",e=>{if(e.key==="ArrowDown"&&subnavItems(id).length){e.preventDefault();navRequest++;if(subnavSection!==id)openSubnav(id,subnavItems(id));$("#subnav a")?.focus()}});
+});
+$("#subnav").addEventListener("click",e=>{const a=e.target.closest("a[data-nav-target]");if(!a||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();navigateSection(a.dataset.navSection,a.dataset.navTarget,a.dataset.navTicker)});
+document.addEventListener("pointerdown",e=>{if(subnavSection&&!$("#navWrap").contains(e.target))closeSubnav()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&subnavSection){e.preventDefault();closeSubnav(true)}});
+syncHeaderSpace();
+if(typeof ResizeObserver==="function"){const headerSize=new ResizeObserver(syncHeaderSpace);headerSize.observe($("#barControls"));headerSize.observe($("#navWrap"))}
+addEventListener("resize",syncHeaderSpace);
+
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>st.D&&render());
 new MutationObserver(()=>st.D&&render()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 
