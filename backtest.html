@@ -38,6 +38,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px
 button,select,input,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .wrap{max-width:1440px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+@media (max-width:768px){main.wrap{padding-right:calc(clamp(28px,8vw,44px) + env(safe-area-inset-right,0px))}}
 
 /* top bar */
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
