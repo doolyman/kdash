@@ -178,10 +178,7 @@ tr.lo2 td{background:var(--lo2)}
 .sector-link:hover,.sector-link[aria-expanded="true"]{color:var(--accent)}
 td.sum{background:var(--sum-bg)}
 .star{color:#d79a1c;margin-left:3px}
-.scroll-y{max-height:560px;overflow:auto}
-.grip{height:14px;cursor:ns-resize;display:flex;justify-content:center;align-items:center;touch-action:none;user-select:none}
-.grip::before{content:"";width:48px;height:4px;border-radius:2px;background:var(--line);transition:background .15s}
-.grip:hover::before,.grip.on::before{background:var(--accent)}
+.scroll-y{overflow:auto;resize:none}
 tr.click{cursor:pointer} tr.click:hover td{background:var(--accent-soft)}
 tr.sel td{outline:0;background:var(--accent-soft)}
 .secsel{font-size:12px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);max-width:150px}
@@ -370,7 +367,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div class="ctrl" id="appParts" style="margin-bottom:8px"></div>
     <div class="sub" id="appMeta" style="margin-bottom:8px"></div>
-    <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="appTbl"></table></div></div>
+    <div class="tw"><div class="scroll-y"><table id="appTbl"></table></div></div>
     <div class="muted-note">선택한 기관 중 하나라도 해당 방향이면 하루 1회 · 강도 입력 시 해당 날짜의 선택 기관 순매수·순매도를 상계한 합계 ÷ 당일 시총 기준으로 추가 필터(순매도는 부호 반전) · 빈칸은 기존 집계 · 출현일수 내림차순 · 최근 출현은 기준일부터 거래일로 계산 · 수익률은 조건을 충족한 첫 출현일 종가 기준</div>
   </section>
 
@@ -384,7 +381,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div class="ctrl" id="cumParts" style="margin-bottom:8px"></div>
     <div class="sub" id="cumMeta" style="margin-bottom:8px"></div>
-    <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="cumTbl"></table></div></div>
+    <div class="tw"><div class="scroll-y"><table id="cumTbl"></table></div></div>
     <div class="muted-note">선택한 기관의 기간 순매수·순매도를 상계한 합계 ÷ 기준일 시가총액 × 100 · 누적강도 내림차순 · 전체 종목 기준 · 순매도는 매도 규모를 양수로 표시 · 수익률은 기간 첫날 종가 기준</div>
   </section>
 
@@ -407,7 +404,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
         <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KQ" checked style="width:auto"> 코스닥</label>
       </div>
     <div class="sub" id="riseMeta" style="margin-bottom:8px"></div>
-    <div class="tw"><div class="scroll-y" style="max-height:640px"><table id="riseTbl"></table></div></div>
+    <div class="tw"><div class="scroll-y"><table id="riseTbl"></table></div></div>
     <div class="muted-note">선택 거래일의 전체 종목 · 당일 상승률 내림차순 · 피·닥 대비는 코스피·코스닥 대비 초과수익(%p) · 기관은 기관 전체 순매수 기준 · 강도 = 순매수액 ÷ 당일 시가총액 × 100 (순매도 상계) · 미수집 수급은 –</div>
     </div>
   </section>
@@ -440,7 +437,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <div class="muted-note">최초 감지일 종가에 샀다고 가정한 결과입니다. 추적에서 빠진(이탈) 종목까지 모두 넣어 계산하므로, 위 '첫 감지 대비'(지금 남아 있는 종목만의 수익률)보다 현실에 가깝습니다. 표본이 적을 때는 숫자가 크게 흔들리며, 과거 결과가 앞으로의 수익을 보장하지 않습니다.</div>
       <div class="lbl" style="margin-top:12px" id="btRecentTitle">감지 사례</div>
       <div class="sub">수익률 아래 작은 글씨: 같은 기간 <b>코스피(피)·코스닥(닥) 대비</b> 초과 수익(%p)</div>
-      <div class="tw scroll-y" style="max-height:520px;margin-top:6px"><table id="btRecent"></table></div>
+      <div class="tw scroll-y" style="margin-top:6px"><table id="btRecent"></table></div>
     </div>
     <details class="panel crit" style="margin-top:12px">
       <summary>추적 규칙 · 직접 지정 섹터 내보내기</summary>
@@ -1132,7 +1129,7 @@ function renderBubDetail(){
   box.innerHTML=`<div class="sh" style="margin-bottom:6px"><div><h3>${esc(p.sector)} <span class="chip" style="color:var(${BCLS[p.cls]})">${p.cls}</span></h3>
     <div class="sub">${B.from} ~ ${B.to} · ${sell?"순매도":"순매수"} 출현 ${p.x}일 · 평균 ${sell?"매도":""}강도 ${fN(p.y,2)}% · 상승확산 ${p.size}%${sec?` · 패턴 ${sec.pattern} / ${sec.badge} · 1개월 ${fP(sec.r["20"])}`:""}</div></div>
     <button class="ib" id="bubClose">닫기</button></div>
-    <div class="tw scroll-y" style="max-height:480px"><table id="bubTbl"><tr><th class="l">종목</th><th>출현일수</th><th class="c">최근 출현</th><th>출현일 평균<br>합산${sell?"매도":""}강도</th><th>출현일 3기관<br><span class="sub">순매수 합 백만원</span></th><th class="l">기관별<br><span class="sub">사/연/투</span></th><th>첫 출현 후<br><span class="sub">피·닥 대비</span></th><th>5일<br><span class="sub">피·닥 대비</span></th><th>10일<br><span class="sub">피·닥 대비</span></th><th>20일<br><span class="sub">피·닥 대비</span></th><th>당일</th><th>시총<br><span class="sub">억원</span></th></tr>
+    <div class="tw scroll-y"><table id="bubTbl"><tr><th class="l">종목</th><th>출현일수</th><th class="c">최근 출현</th><th>출현일 평균<br>합산${sell?"매도":""}강도</th><th>출현일 3기관<br><span class="sub">순매수 합 백만원</span></th><th class="l">기관별<br><span class="sub">사/연/투</span></th><th>첫 출현 후<br><span class="sub">피·닥 대비</span></th><th>5일<br><span class="sub">피·닥 대비</span></th><th>10일<br><span class="sub">피·닥 대비</span></th><th>20일<br><span class="sub">피·닥 대비</span></th><th>당일</th><th>시총<br><span class="sub">억원</span></th></tr>
     ${p.stocks.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${tracked.has(r.t)?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td>
       <td><b>${r.app}일</b></td><td class="c">${r.last}</td><td class="${sell?"dn":"up"}">${fP(r.s_avg,2,false)}</td><td class="${cls(r.flow)}">${fN(r.flow)}</td>
       <td class="l sub">${INV.map(k=>`${INV_S[k]} <span class="${cls(r.inv[k])}">${fN(r.inv[k])}</span>`).join(" ")}</td>
@@ -1202,7 +1199,7 @@ function renderLists(){
       <label class="num">상위 <input type="number" data-list-n="${k}" min="1" max="${st.listMax||200}" value="${n}" step="5" inputmode="numeric" aria-label="${k} 상위 종목 개수">개</label>
       <div class="seg" data-list-side="${k}" role="group" aria-label="${k} 수급 방향"><button type="button" data-s="buy" class="${side==="buy"?"on":""}" aria-pressed="${side==="buy"}">순매수</button><button type="button" data-s="sell" class="${side==="sell"?"on":""}" aria-pressed="${side==="sell"}">순매도</button></div>
     </div></div>
-    <div class="scroll-y" style="max-height:640px"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
+    <div class="scroll-y"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
     ${rows.map((r,i)=>`<tr class="${r.multi===3?(side==="buy"?"hi3":"lo3"):r.multi===2?(side==="buy"?"hi2":"lo2"):""}"><td class="c mut">${i+1}</td>
       <td class="l"><span class="nm">${stockLink(r.t,r.n)}</span>${r.star?'<span class="star" title="매집 추적 중">★</span>':""}<div class="code">${stockCodeLink(r.t,r.m,r.n)}${r.sec?" · "+esc(secOf(r.t,r.sec)):""}</div></td>
       <td><div class="stack"><span>${fN(r.amt)}</span><span class="sub">시총 ${fN(r.cap)}억</span></div></td><td class="${side==="buy"?"up":"dn"}"><b>${fN(r.s,2)}</b></td>${flowReturnCell(r)}</tr>`).join("")||(st.D.lists[side][k]?'<tr><td class="empty" colspan="5">데이터 없음</td></tr>':"")}
@@ -1341,7 +1338,7 @@ function renderStreaks(){
     if(st.D.date!==date||st.stkSel!==sel||(st.stkSide||"buy")!==side||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙·방향이 바뀜
     if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (사모·연기금·투신으로 만든 조합과 전체 체크는, 규칙 0·0 이면 휴대폰에서도 바로 볼 수 있습니다)</div>';return}
     const C=R.combos[sel],tk=R.tk,n=st.listN;
-    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목명 모아보기</button></div></div><div class="scroll-y" style="max-height:640px"><table id="${id}">
+    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목명 모아보기</button></div></div><div class="scroll-y"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 ${word}<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
       ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(t,k[0])}</span><div class="code">${stockCodeLink(t,k[2],k[0])}</div></td>
       <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · ${opposite} ${skip}일 포함`:""}</span></div></td>
@@ -1433,7 +1430,7 @@ function renderSecTopDetail(){
   const box=$("#secTopDetail"),sel=st.secTopSel,group=sel&&secTopGroups[sel.group],o=sel?.side===st.side&&group?.top.find(o=>o.s===sel.sector);
   box.hidden=!o;if(!o){box.innerHTML="";return}
   const w=st.side==="buy"?"순매수":"순매도";
-  box.innerHTML=`<div class="sh"><h3>${esc(group.title)} · ${esc(o.s)} · ${w} 금액순</h3><button class="ib" id="secTopClose">닫기</button></div><div class="tw"><div class="scroll-y" style="max-height:360px"><table id="secTopStocks"><tr><th class="c">순위</th><th class="l">종목</th><th>${w} 금액(백만원)</th><th>매수·매도 강도</th></tr>${o.members.map((r,i)=>`<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td>${fN(r.amt)}</td><td>${fN(r.s,2)}%</td></tr>`).join("")}</table></div></div>`;
+  box.innerHTML=`<div class="sh"><h3>${esc(group.title)} · ${esc(o.s)} · ${w} 금액순</h3><button class="ib" id="secTopClose">닫기</button></div><div class="tw"><div class="scroll-y"><table id="secTopStocks"><tr><th class="c">순위</th><th class="l">종목</th><th>${w} 금액(백만원)</th><th>매수·매도 강도</th></tr>${o.members.map((r,i)=>`<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td>${fN(r.amt)}</td><td>${fN(r.s,2)}%</td></tr>`).join("")}</table></div></div>`;
   $("#secTopClose").onclick=()=>{st.secTopSel=null;renderLists();applySorts()};
 }
 $("#secTop").onclick=e=>{const b=e.target.closest("button[data-g]");if(!b)return;const group=+b.dataset.g,sector=secTopGroups[group].top[+b.dataset.i].s;
@@ -1494,38 +1491,41 @@ $("#btN").onchange=e=>{st.btN=clampInt(e.target.value,1,+e.target.max||9999,0)||
 $("#btAll").onclick=()=>{st.btN=null;renderBT();applySorts()};
 
 
-/* ===== 표 높이 조절 (아래 손잡이 끌기 · 두 번 클릭하면 전체 펼치기) ===== */
-const sizes=store.get("sizes",{});
-function gripKey(el){const t=el.querySelector("table[id]");return t?t.id:null}
-function addGrips(){
-  document.querySelectorAll(".scroll-y").forEach(el=>{
-    const k=gripKey(el);
-    if(k&&sizes[k])el.style.maxHeight=sizes[k];
-    if(el.nextElementSibling&&el.nextElementSibling.classList.contains("grip"))return;
-    const g=document.createElement("div");g.className="grip";g.title="끌어서 높이 조절 · 두 번 클릭하면 전체 펼치기/접기";
-    el.after(g);
-  });
+/* ===== 모든 표: 제목 행 + 데이터 11행 높이, 나머지는 표 안에서 스크롤 ===== */
+const TABLE_VISIBLE_ROWS=11;
+let tableSizeFrame=null;
+function fitTableRows(table){
+  // 접힌 상승 표와 아직 준비되지 않은 섹션은 행에도 접근하지 않는다.
+  if(!table.getClientRects().length)return;
+  const box=table.parentElement;
+  if(!box?.matches(".tw,.scroll-y"))return;
+  box.classList.add("scroll-y");
+  const width=box.clientWidth;
+  let height=0,count=0;
+  for(let i=0;i<table.rows.length&&count<TABLE_VISIBLE_ROWS;i++){
+    const row=table.rows[i],h=row.getBoundingClientRect().height;
+    if(!h)continue;
+    height+=h;
+    if(row.querySelector("td"))count++;
+  }
+  if(!height){box.style.maxHeight="";return}
+  // 가로 스크롤바·테두리까지 더해 11번째 행이 중간에서 잘리지 않게 한다.
+  const chrome=box.offsetHeight-box.clientHeight;
+  box.style.maxHeight=Math.ceil(height+chrome)+"px";
+  if(box.clientWidth!==width)scheduleTableRows();
 }
-let drag=null;
-document.addEventListener("pointerdown",e=>{
-  const g=e.target.closest(".grip");if(!g)return;
-  const el=g.previousElementSibling;drag={g,el,y:e.clientY,h:el.getBoundingClientRect().height};
-  g.classList.add("on");g.setPointerCapture(e.pointerId);e.preventDefault();
-});
-document.addEventListener("pointermove",e=>{
-  if(!drag)return;
-  drag.el.style.maxHeight=Math.max(120,drag.h+e.clientY-drag.y)+"px";
-});
-document.addEventListener("pointerup",()=>{
-  if(!drag)return;const k=gripKey(drag.el);
-  if(k){sizes[k]=drag.el.style.maxHeight;store.set("sizes",sizes)}
-  drag.g.classList.remove("on");drag=null;
-});
-document.addEventListener("dblclick",e=>{
-  const g=e.target.closest(".grip");if(!g)return;const el=g.previousElementSibling,k=gripKey(el);
-  el.style.maxHeight=el.style.maxHeight==="none"?"":"none";
-  if(k){sizes[k]=el.style.maxHeight;store.set("sizes",sizes)}
-});
+function scheduleTableRows(){
+  if(tableSizeFrame!==null)return;
+  tableSizeFrame=requestAnimationFrame(()=>{tableSizeFrame=null;document.querySelectorAll("main table").forEach(fitTableRows)});
+}
+addEventListener("resize",scheduleTableRows);
+document.fonts?.ready.then(scheduleTableRows);
+document.fonts?.addEventListener("loadingdone",scheduleTableRows);
+if(typeof ResizeObserver==="function"){
+  let tableLayoutWidth=-1;
+  const tableLayoutObserver=new ResizeObserver(entries=>{const width=entries[0]?.contentRect.width;if(width!==tableLayoutWidth){tableLayoutWidth=width;scheduleTableRows()}});
+  tableLayoutObserver.observe(document.querySelector("main"));
+}
 
 /* 표의 현재 순서·표시 조건 그대로, 클릭할 때만 종목명을 모은다. */
 function tableStockNames(source){
@@ -1569,12 +1569,12 @@ function sortTable(tb,col,dir){
   const parent=rows[0].parentNode;rows.forEach(r=>parent.appendChild(r));
   [...tb.rows[0].cells].forEach((th,i)=>{th.dataset.arrow=i===col?(dir>0?" ▲":" ▼"):""});
 }
-function applySorts(){addGrips();Object.entries(sorts).forEach(([id,s])=>{const tb=document.getElementById(id);if(tb)sortTable(tb,s.col,s.dir)})}
+function applySorts(){Object.entries(sorts).forEach(([id,s])=>{const tb=document.getElementById(id);if(tb)sortTable(tb,s.col,s.dir)});scheduleTableRows()}
 document.addEventListener("click",e=>{
   const th=e.target.closest("th");if(!th)return;const tb=th.closest("table");if(!tb||!tb.id)return;
   const col=th.cellIndex,cur=sorts[tb.id];
   const dir=cur&&cur.col===col?-cur.dir:-1;
-  sorts[tb.id]={col,dir};sortTable(tb,col,dir);
+  sorts[tb.id]={col,dir};sortTable(tb,col,dir);scheduleTableRows();
 });
 
 /* 고정 메뉴 · 스크롤 방향에 따른 상단 정보 · 하위 항목 이동 */
