@@ -318,7 +318,8 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="panel" id="sectorLeaders" style="margin-top:16px">
       <div class="sh"><div><h3>주도섹터 트렌드</h3><div class="sub" id="bubMeta"></div></div>
         <div class="ctrl">
-          <div class="seg" id="bubSide"><button data-s="b" class="on">순매수</button><button data-s="s">순매도</button></div>
+        <div class="seg" id="bubSide"><button data-s="b" class="on">순매수</button><button data-s="s">순매도</button></div>
+        <label class="num" title="체크: 순매수 수량 ÷ 거래량 · 기본: 순매수금액 ÷ 시총"><input type="checkbox" data-strength-for="bubTbl" style="width:auto"> 거래량 대비 강도</label>
           <div class="seg" id="bubWin"><button data-w="10">10일</button><button data-w="20">20일</button><button data-w="40">40일</button></div>
           <label class="num">기간 <input type="number" id="bubWinN" min="2" max="120" step="1" inputmode="numeric">일</label>
           <label class="num">섹터 <input type="number" id="bubTopN" min="1" max="300" step="5" inputmode="numeric">개</label>
@@ -340,6 +341,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
           <label class="num" style="cursor:pointer"><input type="checkbox" id="simSum" checked style="width:auto"> 합산수급(0 포함)</label>
           <label class="num" style="cursor:pointer"><input type="checkbox" id="simNet" style="width:auto"> 합산수급(-포함)</label>
         </div>
+        <label class="num" title="체크: 순매수 수량 ÷ 거래량 · 기본: 순매수금액 ÷ 시총"><input type="checkbox" data-strength-for="simTbl" style="width:auto"> 거래량 대비 강도</label>
         <label class="num">표시 <input type="number" id="simN" min="0" step="1" inputmode="numeric" placeholder="전체">개</label>
         <label class="num"><span id="simStrengthLabel">합산강도</span> <input type="number" id="simMin" step="0.01" inputmode="decimal" placeholder="제한 없음" style="width:84px">% 이상</label>
       </div></div>
@@ -352,6 +354,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
       <div class="sh" style="margin-bottom:4px"><h3 id="secTopTitle">섹터 TOP 7</h3><div class="ctrl">
         <label class="num">상위 <input type="number" id="listN" min="1" max="200" step="5" inputmode="numeric">개</label>
         <div class="seg" id="sideSeg" role="group" aria-label="섹터 TOP 7 수급 방향"><button data-s="buy" class="on">순매수</button><button data-s="sell">순매도</button></div>
+        <label class="num" title="체크: 순매수 수량 ÷ 거래량 · 기본: 순매수금액 ÷ 시총"><input type="checkbox" data-strength-for="secTopStocks" style="width:auto"> 거래량 대비 강도</label>
       </div><span class="meta" id="secTopMeta"></span></div>
       <div class="sectop" id="secTop"></div>
       <div id="secTopDetail" style="margin-top:12px" hidden></div>
@@ -362,7 +365,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
   <!-- ================= 최다 출현 ================= -->
   <section class="sec" id="appearance">
     <div class="sh"><div class="title-actions"><h2 id="appTitle">순매수 최다 출현</h2><button type="button" class="ib names-button" data-names-from="appTbl">종목명 모아보기</button></div>
-      <div class="ctrl"><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
+      <div class="ctrl"><label class="num" title="체크: 순매수 수량 ÷ 거래량 · 기본: 순매수금액 ÷ 시총"><input type="checkbox" data-strength-for="appTbl" style="width:auto"> 거래량 대비 강도</label><label class="num">최근 <input type="number" id="appDays" min="1" value="30" step="1" inputmode="numeric">거래일</label>
       <label class="num">당일 합산강도 <input type="number" id="appMin" step="0.01" inputmode="decimal" placeholder="제한 없음" style="width:84px">% 이상</label>
       <span class="meta">전체 종목 · 금액·순위 제한 없음</span>
       <div class="seg" id="appSide"><button data-s="buy" class="on">순매수</button><button data-s="sell">순매도</button></div></div>
@@ -370,13 +373,14 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="ctrl" id="appParts" style="margin-bottom:8px"></div>
     <div class="sub" id="appMeta" style="margin-bottom:8px"></div>
     <div class="tw"><div class="scroll-y"><table id="appTbl"></table></div></div>
-    <div class="muted-note">선택한 기관 중 하나라도 해당 방향이면 하루 1회 · 강도 입력 시 해당 날짜의 선택 기관 순매수·순매도를 상계한 합계 ÷ 당일 시총 기준으로 추가 필터(순매도는 부호 반전) · 빈칸은 기존 집계 · 출현일수 내림차순 · 최근 출현은 기준일부터 거래일로 계산 · 수익률은 조건을 충족한 첫 출현일 종가 기준</div>
+    <div class="muted-note" id="appDefinition">선택한 기관 중 하나라도 해당 방향이면 하루 1회 · 강도 입력 시 해당 날짜의 선택 기관 순매수·순매도를 상계한 합계 ÷ 당일 시총 기준으로 추가 필터(순매도는 부호 반전) · 빈칸은 기존 집계 · 출현일수 내림차순 · 최근 출현은 기준일부터 거래일로 계산 · 수익률은 조건을 충족한 첫 출현일 종가 기준</div>
   </section>
 
   <!-- ================= 누적강도 ================= -->
   <section class="sec" id="cumulative">
     <div class="sh"><div class="title-actions"><h2 id="cumTitle">순매수 누적강도</h2><button type="button" class="ib names-button" data-names-from="cumTbl">종목명 모아보기</button></div>
       <div class="ctrl">
+        <label class="num" title="체크: 기간 순매수 수량 합계 ÷ 기간 거래량 합계 · 기본: 기간 순매수금액 ÷ 기준일 시총"><input type="checkbox" data-strength-for="cumTbl" style="width:auto"> 거래량 대비 강도</label>
         <label class="num">최근 <input type="number" id="cumDays" min="1" value="10" step="1" inputmode="numeric">거래일</label>
         <div class="seg" id="cumSide"><button type="button" data-s="buy" class="on">순매수</button><button type="button" data-s="sell">순매도</button></div>
       </div>
@@ -384,7 +388,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     <div class="ctrl" id="cumParts" style="margin-bottom:8px"></div>
     <div class="sub" id="cumMeta" style="margin-bottom:8px"></div>
     <div class="tw"><div class="scroll-y"><table id="cumTbl"></table></div></div>
-    <div class="muted-note">선택한 기관의 기간 순매수·순매도를 상계한 합계 ÷ 기준일 시가총액 × 100 · 누적강도 내림차순 · 전체 종목 기준 · 순매도는 매도 규모를 양수로 표시 · 수익률은 기간 첫날 종가 기준</div>
+    <div class="muted-note" id="cumDefinition">선택한 기관의 기간 순매수·순매도를 상계한 합계 ÷ 기준일 시가총액 × 100 · 누적강도 내림차순 · 전체 종목 기준 · 순매도는 매도 규모를 양수로 표시 · 수익률은 기간 첫날 종가 기준</div>
   </section>
 
   <!-- ================= 연속 매수 ================= -->
@@ -402,12 +406,13 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div id="riseBody" hidden>
       <div class="ctrl" id="riseMarkets" role="group" aria-label="상승률 표 시장 선택">
+        <label class="num" title="체크: 순매수 수량 ÷ 거래량 · 기본: 순매수금액 ÷ 시총"><input type="checkbox" data-strength-for="riseTbl" style="width:auto"> 거래량 대비 강도</label>
         <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KS" checked style="width:auto"> 코스피</label>
         <label class="num" style="cursor:pointer"><input type="checkbox" data-market="KQ" checked style="width:auto"> 코스닥</label>
       </div>
     <div class="sub" id="riseMeta" style="margin-bottom:8px"></div>
     <div class="tw"><div class="scroll-y"><table id="riseTbl"></table></div></div>
-    <div class="muted-note">선택 거래일의 전체 종목 · 당일 상승률 내림차순 · 피·닥 대비는 코스피·코스닥 대비 초과수익(%p) · 기관은 기관 전체 순매수 기준 · 강도 = 순매수액 ÷ 당일 시가총액 × 100 (순매도 상계) · 미수집 수급은 –</div>
+    <div class="muted-note" id="riseDefinition">선택 거래일의 전체 종목 · 당일 상승률 내림차순 · 피·닥 대비는 코스피·코스닥 대비 초과수익(%p) · 기관은 기관 전체 순매수 기준 · 강도 = 순매수액 ÷ 당일 시가총액 × 100 (순매도 상계) · 미수집 수급은 –</div>
     </div>
   </section>
 
@@ -421,7 +426,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
 
   <!-- ================= 추적 ================= -->
   <section class="sec" id="track">
-    <div class="sh"><h2>매집 추적 중</h2><span class="meta" id="trkMeta"></span></div>
+    <div class="sh"><h2>매집 추적 중</h2><label class="num" title="체크: 수량 기반 강도로 감지·추적 · 기본: 시총 기반"><input type="checkbox" data-strength-for="trkTbl" style="width:auto"> 거래량 대비 강도</label><span class="meta" id="trkMeta"></span></div>
     <div class="chips" id="trkFilter" style="margin-bottom:8px"></div>
     <div class="tw scroll-y"><table id="trkTbl"></table></div>
     <div class="panel" id="trackCompare" style="margin-top:12px">
@@ -434,7 +439,7 @@ textarea.out{width:100%;height:120px;font-family:var(--mono);font-size:12px;bord
     </div>
     <div class="panel" id="trackResults" style="margin-top:12px">
       <div class="sh"><div><h3>감지 성과 검증</h3><div class="sub" id="btMeta"></div></div>
-        <div class="ctrl"><label class="num">최근 <input type="number" id="btN" min="1" step="5" inputmode="numeric">거래일</label><button class="ib" id="btAll">전체</button></div></div>
+        <div class="ctrl"><label class="num" title="체크: 수량 기반 감지 사례의 성과 · 기본: 시총 기반"><input type="checkbox" data-strength-for="btRecent" style="width:auto"> 거래량 대비 강도</label><label class="num">최근 <input type="number" id="btN" min="1" step="5" inputmode="numeric">거래일</label><button class="ib" id="btAll">전체</button></div></div>
       <div class="tw" style="border:0"><table id="btSum"></table></div>
       <div class="muted-note">최초 감지일 종가에 샀다고 가정한 결과입니다. 추적에서 빠진(이탈) 종목까지 모두 넣어 계산하므로, 위 '첫 감지 대비'(지금 남아 있는 종목만의 수익률)보다 현실에 가깝습니다. 표본이 적을 때는 숫자가 크게 흔들리며, 과거 결과가 앞으로의 수익을 보장하지 않습니다.</div>
       <div class="lbl" style="margin-top:12px" id="btRecentTitle">감지 사례</div>
@@ -571,6 +576,7 @@ async function loadIndex(bust){
     }
   }
   window.KD_BUB=null;BUBIDX=null;window.KD_SER=null;window.KD_EV=null;window.KD_APP=null;window.KD_WATCH=null;SERIDX=null;
+  window.KD_VOLUME={};window.KD_QAPP=null;window.KD_QBUB=null;window.KD_QEV=null;
   sharedLoads.clear();
   if(!st.lazy)await Promise.all(["bubble.js","series.js","events.js","appearances.js","watch_trade.js"].map(f=>loadScript(st.src+f+q).catch(()=>{})));
   st.dates=(window.KD_DATES||[]).slice().sort();
@@ -771,8 +777,54 @@ async function render(){
   $("#gen").title=`화면·로직·데이터의 마지막 변경 반영 시각 · 선택 거래일 자료 계산: ${D.generated}`;
   history.replaceState(null,"","#d"+D.date.replace(/-/g,""));
   if(st.lazy){await renderLazy();return}
+  if(Object.values(st.strengthModes||{}).includes("volume"))await Promise.all([...new Set(Object.values(strengthSections))].map(ensureStrengthFiles));
   renderMarket();renderSectors();renderSim();renderLists();renderAppearances();renderCumulative();renderStreaks();renderDailyStocks();renderWatch();renderTrack();renderBT();renderOv();applySorts();
 }
+
+/* 강도 방식: 기본 시총 대비, 수량 대비 자료는 해당 표에서 선택할 때만 읽는다. */
+function volumeMode(id){return st.strengthModes?.[id]==="volume"}
+function strengthData(id){if(!volumeMode(id))return st.D;const data=window.KD_VOLUME?.[st.D.date],field=id==="simTbl"?"simul_net":id.startsWith("lst_")||id==="secTopStocks"?"lists":id==="riseTbl"?"daily_strength":id==="trkTbl"?"tracking":id==="btRecent"?"ev_now":id==="bubTbl"?"bub_now":"streaks";if(!data||data.basis!=="volume"||!data[field])throw Error("선택 날짜의 수량 자료가 없습니다");return {...st.D,...data}}
+function strengthHistory(id){return volumeMode(id)?window.KD_QAPP:window.KD_APP}
+function strengthLabel(id){return volumeMode(id)?"순매수 수량 ÷ 거래량 × 100":"순매수금액 ÷ 시가총액 × 100"}
+function strengthCheckbox(id){return `<label class="num strength-choice" title="체크: 순매수 수량 ÷ 거래량 × 100 · 기본: 순매수금액 ÷ 시총 × 100"><input type="checkbox" data-strength-for="${esc(id)}" ${volumeMode(id)?"checked":""} style="width:auto"> 거래량 대비 강도</label>`}
+const strengthSections={simTbl:"flow",lst_사모:"flow",lst_연기금:"flow",lst_투신:"flow",secTopStocks:"flow",appTbl:"appearance",cumTbl:"cumulative",stk_e:"streak",stk_c:"streak",riseTbl:"daily-rise",bubTbl:"sector",trkTbl:"track",btRecent:"track"};
+const strengthRequests={};
+function strengthFiles(id,date=st.D?.date){
+  if(id==="appTbl"||id==="cumTbl")return ["volume_appearances.js"];
+  return [`volume_${date}.js`,...(id==="bubTbl"?["volume_bubble.js"]:id==="btRecent"?["volume_events.js"]:[])];
+}
+async function ensureStrengthFiles(section){
+  const ids=Object.keys(strengthSections).filter(id=>strengthSections[id]===section&&volumeMode(id));
+  await Promise.all([...new Set(ids.flatMap(id=>strengthFiles(id)))].map(sharedFile));
+}
+function syncStrengthControls(){document.querySelectorAll("input[data-strength-for]").forEach(input=>{input.checked=volumeMode(input.dataset.strengthFor)})}
+async function setStrengthMode(id,enabled,input){
+  if(!(id in strengthSections)||!st.D)return;
+  const request=strengthRequests[id]=(strengthRequests[id]||0)+1,date=st.D.date,previous=st.strengthModes?.[id]||"cap";
+  if(input)input.disabled=true;
+  try{
+    if(enabled){
+      await Promise.all(strengthFiles(id,date).map(sharedFile));
+      if(request!==strengthRequests[id]||st.D.date!==date)return;
+      if(id==="appTbl"||id==="cumTbl"){
+        if(!window.KD_QAPP?.days[date]?.complete)throw Error("선택 날짜의 수량 자료가 아직 준비되지 않았습니다.");
+      }else if(!window.KD_VOLUME?.[date])throw Error("선택 날짜의 수량 자료가 아직 준비되지 않았습니다.");
+    }
+    st.strengthModes??={};st.strengthModes[id]=enabled?"volume":"cap";
+    if(id==="simTbl")renderSim();
+    else if(id.startsWith("lst_")||id==="secTopStocks")renderLists();
+    else if(id==="appTbl")renderAppearances();
+    else if(id==="cumTbl")renderCumulative();
+    else if(id==="stk_e"||id==="stk_c")await renderStreaks();
+    else if(id==="riseTbl")renderDailyStocks();
+    else if(id==="bubTbl"){BUBIDX=null;renderBubble()}
+    else if(id==="trkTbl")renderTrack();
+    else if(id==="btRecent")renderBT();
+    applySorts();
+  }catch(e){if(request===strengthRequests[id]){st.strengthModes??={};st.strengthModes[id]=previous}alertBox("수량 기준 강도를 불러오지 못했습니다. 위 새로고침으로 최신 자료를 받아주세요. "+e.message)}
+  finally{if(input)input.disabled=false;syncStrengthControls()}
+}
+document.addEventListener("change",e=>{const input=e.target.closest("input[data-strength-for]");if(input)setStrengthMode(input.dataset.strengthFor,input.checked,input)});
 
 /* 비공개 모바일 사이트: 마지막 자료·항목 유지, 필요한 공유 파일과 표만 준비한다. */
 const sharedLoads=new Map(),sectionJobs=new Map();
@@ -792,6 +844,7 @@ async function ensureSection(id){
   const job=(async()=>{
     try{
       await Promise.all(files.map(sharedFile));
+      if(st.strengthModes)await ensureStrengthFiles(id);
       if(epoch!==lazyEpoch)return;
       await ({market:renderMarket,sector:renderSectors,flow:()=>{renderSim();renderLists()},appearance:renderAppearances,cumulative:renderCumulative,streak:renderStreaks,"daily-rise":renderDailyStocks,watch:renderWatch,track:()=>{renderTrack();renderBT();renderOv()}})[id]();
       if(epoch!==lazyEpoch)return;
@@ -865,14 +918,16 @@ function renderDailyStocks(){
     return;
   }
   const block=st.D.daily_stocks,rows=dailyStockRows(block,st.riseMarkets);
+  const quantity=volumeMode("riseTbl")?strengthData("riseTbl").daily_strength:null;
+  const definition=$("#riseDefinition");if(definition)definition.textContent=`선택 거래일 전체 종목 · 당일 상승률순 · 피·닥 대비는 지수 대비 초과수익 · 강도: ${strengthLabel("riseTbl")} · 매도 상계 · 미수집/거래량 0은 –`;
   $("#riseMarkets").querySelectorAll("input[data-market]").forEach(x=>x.checked=st.riseMarkets.has(x.dataset.market));
-  const missing=block?.missing||[];
+  const missing=quantity?[]:(block?.missing||[]);
   $("#riseMeta").textContent=`${st.D.date} · ${rows.length.toLocaleString("ko-KR")}종목 · 당일 상승률순`+(missing.length?` · ${missing.join("·")} 수급 미수집 (갱신 후 표시)`:"");
   const strength=v=>`<td data-sort="${v??""}">${pc(v,3)}</td>`;
   $("#riseTbl").innerHTML=`<colgroup><col style="width:136px"><col style="width:88px"><col style="width:152px"><col style="width:88px"><col style="width:88px"><col style="width:88px"></colgroup><tr><th class="l">종목명</th><th>시총<span class="sub"> (억원)</span><br><span class="sub">섹터</span></th><th>상승률<br><span class="sub">피·닥 대비</span></th><th>기관+외국인<br><span class="sub">매수강도</span></th><th>기관 매수강도<br><span class="sub">기관 전체</span></th><th>외국인 매수강도</th></tr>`+
-    (rows.map(r=>`<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}"><div class="stack"><span class="cap-value">${fN(r.cap)}</span><span class="sub">${esc(secOf(r.t,r.sec))||"–"}</span></div></td>${flowReturnCell(r)}${strength(r.total)}${strength(r.inst)}${strength(r.foreign)}</tr>`).join("")||`<tr><td colspan="6" class="empty">${!block?"데이터 갱신 후 표시됩니다.":st.riseMarkets.size?"표시할 종목이 없습니다.":"코스피 또는 코스닥을 선택해주세요."}</td></tr>`);
+    (rows.map(r=>{const values=quantity?(quantity[r.t]||{}):r;return `<tr><td class="l"><span class="nm">${stockLink(r.t,r.n)}</span><div class="code">${stockCodeLink(r.t,r.m,r.n)}</div></td><td data-sort="${r.cap??""}"><div class="stack"><span class="cap-value">${fN(r.cap)}</span><span class="sub">${esc(secOf(r.t,r.sec))||"–"}</span></div></td>${flowReturnCell(r)}${strength(values.total)}${strength(values.inst)}${strength(values.foreign)}</tr>`}).join("")||`<tr><td colspan="6" class="empty">${!block?"데이터 갱신 후 표시됩니다.":st.riseMarkets.size?"표시할 종목이 없습니다.":"코스피 또는 코스닥을 선택해주세요."}</td></tr>`);
 }
-$("#riseToggle").onclick=()=>{if(!st.D)return;st.riseExpanded=!riseIsOpen();renderDailyStocks();applySorts()};
+$("#riseToggle").onclick=async()=>{if(!st.D)return;st.riseExpanded=!riseIsOpen();if(st.riseExpanded&&volumeMode("riseTbl")){const date=st.D.date;try{await ensureStrengthFiles("daily-rise");if(st.D.date!==date)return}catch(e){st.riseExpanded=false;alertBox("수량 자료를 불러오지 못했습니다. 새로고침 후 다시 펼쳐주세요.")}}renderDailyStocks();applySorts()};
 $("#riseMarkets").onchange=e=>{
   const market=e.target.dataset.market;if(!["KS","KQ"].includes(market))return;
   if(e.target.checked)st.riseMarkets.add(market);else st.riseMarkets.delete(market);
@@ -1066,13 +1121,13 @@ const BCLS={"강한 지속":"--up","개선형":"--ok","신규 진입":"--warn","
 /* 주도섹터 트렌드: bubble.js(날짜별 3기관 상위20 출현 기록)로 기간·섹터 수를 화면에서 바로 계산 */
 let BUBIDX=null;
 function bubIndex(){
-  if(BUBIDX)return BUBIDX;const B=window.KD_BUB;if(!B)return null;
+  const B=volumeMode("bubTbl")?window.KD_QBUB:window.KD_BUB;if(BUBIDX?.B===B)return BUBIDX;if(!B)return null;
   const tsec=new Map();Object.entries(B.sec).forEach(([s,arr])=>arr.forEach(i=>{let a=tsec.get(i);if(!a)tsec.set(i,a=[]);a.push(s)}));
   return BUBIDX={B,tsec,days:Object.keys(B.days).sort()};
 }
 function bubbleCalc(side,w){
   const X=bubIndex();if(!X)return null;
-  const D=st.D,win=X.days.filter(d=>d<=D.date).slice(-w);if(!win.length)return null;
+  const D=strengthData("bubTbl"),win=X.days.filter(d=>d<=D.date).slice(-w);if(!win.length)return null;
   const half=Math.floor(win.length/2),sg=side==="b"?1:-1,breadth={},acc={};
   D.sectors.forEach(o=>breadth[o.sector]=o.breadth);
   win.forEach((d,di)=>{
@@ -1150,26 +1205,27 @@ $("#bubCls").onclick=e=>{const b=e.target.closest("button");if(!b)return;const k
 /* ===== 수급 ===== */
 /* sim: 모두 >0, sum: 모두 >=0·합산 >0(기본), net: 매도 포함 부호 있는 순합산. */
 function renderSim(){
+  const qty=volumeMode("simTbl"),D=strengthData("simTbl"),direction=v=>qty?v.q:v.amt;
   const mode=st.simMode,netMode=mode==="net",sumMode=mode!=="sim",sell=st.simSide==="sell",word=sell?"순매도":"순매수";
   $("#simSum").checked=mode==="sum";$("#simNet").checked=netMode;
   $("#simTitle").textContent=sell?`당일 3기관 ${sumMode?"합산":"동시"}수급 (${netMode?"순매도·매수포함":"순매도"})`:netMode?"당일 3기관 합산수급 (매도포함)":`당일 3기관 ${sumMode?"합산":"동시"}수급`;
   $("#simStrengthLabel").textContent=sell?"합산매도강도":"합산강도";
-  const condition=netMode?(sell?"매도(+)·매수(-) 금액을 상계한 순합산매도강도":"매수(+)·매도(-) 금액을 상계한 순합산강도"):sumMode?`각 기관 ${word}액 0 이상·합산강도 0 초과`:`각 기관 ${word}액 0 초과`;
-  const raw=sell||netMode?(st.D.simul_net||[]):(st.D.simul_all||[]);
-  const source=sell?raw.map(r=>({...r,s:-r.s||0,amt:-r.amt||0,inv:Object.fromEntries(INV.map(k=>[k,{...r.inv[k],s:-r.inv[k].s||0,amt:-r.inv[k].amt||0,rank:r.inv[k].sell_rank,sell_rank:r.inv[k].rank}]))})):raw;
-  const all=source.filter(r=>netMode?INV.some(k=>r.inv[k].amt!==0):r.s>0&&INV.every(k=>sumMode?r.inv[k].amt>=0:r.inv[k].amt>0));
+  const condition=netMode?`${sell?"매도(+)·매수(-)":"매수(+)·매도(-)"} ${qty?"수량":"금액"}을 상계한 순합산${sell?"매도":""}강도`:sumMode?`각 기관 ${word}${qty?"수량":"액"} 0 이상·합산강도 0 초과`:`각 기관 ${word}${qty?"수량":"액"} 0 초과`;
+  const raw=sell||netMode?(D.simul_net||[]):(D.simul_all||[]);
+  const source=sell?raw.map(r=>({...r,s:-r.s||0,amt:-r.amt||0,...(qty?{q:-r.q||0}:{}),inv:Object.fromEntries(INV.map(k=>[k,{...r.inv[k],s:-r.inv[k].s||0,amt:-r.inv[k].amt||0,...(qty?{q:-r.inv[k].q||0}:{}),rank:r.inv[k].sell_rank,sell_rank:r.inv[k].rank}]))})):raw;
+  const all=source.filter(r=>netMode?INV.some(k=>direction(r.inv[k])!==0):r.s>0&&INV.every(k=>sumMode?direction(r.inv[k])>=0:direction(r.inv[k])>0));
   const filtered=all.filter(r=>st.simMin==null||r.s>=st.simMin).sort((a,b)=>b.s-a.s);
   const S=st.simN?filtered.slice(0,st.simN):filtered;
-  $("#simMeta").textContent=`${st.D.date} · ${condition} ${all.length}종목 · 합산${sell?"매도":""}강도순 · ${S.length}종목 표시 · 개수 빈칸/0·강도 빈칸은 제한 없음${sumMode?` · ${sell?"파란":"노란"} 음영: 세 기관 모두 ${word}`:""}`;
+  $("#simMeta").textContent=`${D.date} · ${condition} ${all.length}종목 · 합산${sell?"매도":""}강도순 · ${S.length}종목 표시 · 개수 빈칸/0·강도 빈칸은 제한 없음${sumMode?` · ${sell?"파란":"노란"} 음영: 세 기관 모두 ${word}`:""}`;
   if(!S.length){$("#simTbl").innerHTML=`<tr><td class="empty">${all.length?"입력한 조건에 맞는 종목이 없습니다.":condition+"인 종목이 없습니다."}</td></tr>`;return}
-  const caps=new Map((st.D.daily_stocks?.rows||[]).map(r=>[r.t,r.cap]));
+  const caps=new Map((D.daily_stocks?.rows||[]).map(r=>[r.t,r.cap]));
   $("#simTbl").innerHTML=`<tr><th class="l">종목</th><th class="l">섹터</th><th>3기관 합산${sell?"매도":""}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th>${INV.map(k=>`<th title="전체 순매수·순매도 종목의 강도 기준 · 금액 0은 순위 없음">${k} 순위</th><th>${k} ${sell?"매도":""}강도</th>`).join("")}</tr>`+
-    S.map(r=>`<tr class="${sumMode&&INV.every(k=>r.inv[k].amt>0)?sell?"lo3":"hi3":""}"><td class="l"><div class="nm">${stockLink(r.t,r.n)}</div><span class="code">${stockCodeLink(r.t,r.m,r.n)}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
+    S.map(r=>`<tr class="${sumMode&&INV.every(k=>direction(r.inv[k])>0)?sell?"lo3":"hi3":""}"><td class="l"><div class="nm">${stockLink(r.t,r.n)}</div><span class="code">${stockCodeLink(r.t,r.m,r.n)}</span></td><td class="l">${secSelect(r.t,r.n,r.sec)}</td>
     <td class="sum" data-sort="${r.s}"><div class="stack"><b class="${cls(sell?-r.s:r.s)}">${fP(r.s,4,false)}</b><span class="sub">시총 ${fN(r.cap??caps.get(r.t))}억</span></div></td>
     ${flowReturnCell(r)}
-    ${INV.map(k=>`${simRankCell(r.inv[k],sell?"sell":"buy")}<td data-sort="${r.inv[k].s}"><div class="stack"><span class="${cls(sell?-r.inv[k].s:r.inv[k].s)}">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}</tr>`).join("");
+    ${INV.map(k=>`${simRankCell(r.inv[k],sell?"sell":"buy",qty)}<td data-sort="${r.inv[k].s}"><div class="stack"><span class="${cls(sell?-r.inv[k].s:r.inv[k].s)}">${fP(r.inv[k].s,4,false)}</span><span class="sub">${fN(r.inv[k].amt,1)}백만원</span></div></td>`).join("")}</tr>`).join("");
 }
-function simRankCell(v,side="buy"){const opposite=v.amt<0,rank=opposite?v.sell_rank:v.rank;return `<td data-sort="${rank==null?"":opposite?-rank:rank}"><b>${rank==null?"–":(opposite?(side==="sell"?"매수 ":"매도 "):"")+rank+"위"}</b></td>`}
+function simRankCell(v,side="buy",qty=false){const opposite=(qty?v.q:v.amt)<0,rank=opposite?v.sell_rank:v.rank;return `<td data-sort="${rank==null?"":opposite?-rank:rank}"><b>${rank==null?"–":(opposite?(side==="sell"?"매수 ":"매도 "):"")+rank+"위"}</b></td>`}
 function setSimMode(mode){st.simMode=["sim","sum","net"].includes(mode)?mode:"sum";store.set("simMode_v2",st.simMode);renderSim();applySorts()}
 $("#simSide").onclick=e=>{const b=e.target.closest("button[data-s]");if(!b)return;st.simSide=b.dataset.s==="sell"?"sell":"buy";[...$("#simSide").children].forEach(x=>x.classList.toggle("on",x===b));renderSim();applySorts()};
 $("#simSum").onchange=e=>setSimMode(e.target.checked?"sum":"sim");
@@ -1187,13 +1243,13 @@ function listSide(k){return st.listSides?.[k]==="sell"?"sell":"buy"}
 function renderLists(){
   if(!st.D)return;
   const n=st.listN,L={};
-  INV.forEach(k=>L[k]=(st.D.lists[listSide(k)]?.[k]||[]).slice(0,n));
+  INV.forEach(k=>L[k]=(strengthData("lst_"+k).lists[listSide(k)]?.[k]||[]).slice(0,n));
   // 현재 표시 중이며 방향도 같은 기관 표 사이의 상위 N 중복만 강조한다.
   const sets=Object.fromEntries(INV.map(k=>[k,new Set(L[k].map(r=>r.t))]));
   const sides=[...new Set(INV.map(listSide))];
   $("#listTitle").textContent=`수급 주체별 상위 ${n}`;
-  $("#listLegend").innerHTML=sides.map(side=>{const buy=side==="buy",w=buy?"순매수":"순매도";return `<span class="chip" style="background:var(${buy?"--hi3":"--lo3"});color:var(--fg)">3기관 모두 ${w} 상위${n}</span><span class="chip" style="background:var(${buy?"--hi2":"--lo2"});color:var(--fg)">2기관 ${w} 상위${n}</span>`}).join("")+`<span class="chip">같은 방향 표의 중복</span><span class="chip"><span class="star">★</span> 매집 추적 중</span><span class="chip">강도 = 순매수·순매도 ÷ 시가총액</span><span class="chip">표 제목 칸을 누르면 정렬</span>`;
-  const sectorL=Object.fromEntries(INV.map(k=>[k,(st.D.lists[st.side]?.[k]||[]).slice(0,n)]));
+  $("#listLegend").innerHTML=sides.map(side=>{const buy=side==="buy",w=buy?"순매수":"순매도";return `<span class="chip" style="background:var(${buy?"--hi3":"--lo3"});color:var(--fg)">3기관 모두 ${w} 상위${n}</span><span class="chip" style="background:var(${buy?"--hi2":"--lo2"});color:var(--fg)">2기관 ${w} 상위${n}</span>`}).join("")+`<span class="chip">같은 방향 표의 중복</span><span class="chip"><span class="star">★</span> 매집 추적 중</span><span class="chip">강도 기준은 각 표에서 선택</span><span class="chip">표 제목 칸을 누르면 정렬</span>`;
+  const sectorL=Object.fromEntries(INV.map(k=>[k,(strengthData("secTopStocks").lists[st.side]?.[k]||[]).slice(0,n)]));
   renderSecTop(st.side,sectorL);
   $("#lists").innerHTML=INV.map(k=>{
     const side=listSide(k),w=side==="buy"?"순매수":"순매도";
@@ -1201,6 +1257,7 @@ function renderLists(){
     return `<div class="tw"><div class="sh list-heading"><div class="title-actions"><h3>${k} ${w} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="lst_${k}">종목명 모아보기</button></div><div class="ctrl list-controls">
       <label class="num">상위 <input type="number" data-list-n="${k}" min="1" max="${st.listMax||200}" value="${n}" step="5" inputmode="numeric" aria-label="${k} 상위 종목 개수">개</label>
       <div class="seg" data-list-side="${k}" role="group" aria-label="${k} 수급 방향"><button type="button" data-s="buy" class="${side==="buy"?"on":""}" aria-pressed="${side==="buy"}">순매수</button><button type="button" data-s="sell" class="${side==="sell"?"on":""}" aria-pressed="${side==="sell"}">순매도</button></div>
+      ${strengthCheckbox("lst_"+k)}
     </div></div>
     <div class="scroll-y"><table id="lst_${k}"><tr><th class="c">순위</th><th class="l">종목</th><th>${w}<br><span class="sub">백만원 · 시총</span></th><th>${side==="buy"?"매수":"매도"}강도</th><th title="당일 상승률 기준 정렬 · 피·닥 대비는 종목 상승률 − 각 지수 등락률 (%p)">당일 상승률<br><span class="sub">피·닥 대비</span></th></tr>
     ${rows.map((r,i)=>`<tr class="${r.multi===3?(side==="buy"?"hi3":"lo3"):r.multi===2?(side==="buy"?"hi2":"lo2"):""}"><td class="c mut">${i+1}</td>
@@ -1224,6 +1281,7 @@ function appearanceCalc(A,date,sel,days,side="buy",minStrength=null){
   const dates=A.dates.filter(d=>d<=date),end=dates.length-1;
   if(end<0||dates[end]!==date)return {dates:[],rows:[]};
   const windowDates=dates.slice(-days),counts=new Map();
+  if(A.basis==="volume"&&windowDates.some(d=>!A.days[d]?.complete))return {dates:windowDates,rows:[],missingStrength:true};
   const applyMin=minStrength!=null&&String(minStrength).trim()!==""&&Number.isFinite(Number(minStrength));
   const selected=[...sel].flatMap((bit,i)=>bit==="1"?[i]:[]),sign=side==="sell"?-1:1,scale=A.flow_scale||10;
   for(const d of windowDates){
@@ -1234,9 +1292,10 @@ function appearanceCalc(A,date,sel,days,side="buy",minStrength=null){
       if(!Array.isArray(day?.flows)||!Array.isArray(day?.cap))return {dates:windowDates,rows:[],missingStrength:true};
       totals=new Map(day.flows.map(([i,...flows])=>[i,selected.reduce((sum,k)=>sum+(flows[k]||0),0)]));
     }
-    for(const [i] of combos?.[sel]||[]){
+    const entries=A.basis==="volume"?(A.days[d].flows||[]).filter(row=>selected.some(k=>sign*(row[k+1]||0)>0)):(combos?.[sel]||[]);
+    for(const [i] of entries){
       if(applyMin){
-        const cap=A.days[d].cap[i];
+        const cap=A.basis==="volume"?A.days[d].volume?.[i]/100:A.days[d].cap[i];
         if(!(cap>0)||!Number.isFinite(cap)||sign*(totals.get(i)||0)/scale/cap<Number(minStrength))continue;
       }
       const row=counts.get(i)||{i,count:0,first:d,last:d};
@@ -1251,7 +1310,8 @@ function appearanceCalc(A,date,sel,days,side="buy",minStrength=null){
   return {dates:windowDates,rows};
 }
 function renderAppearances(){
-  const A=window.KD_APP,parts=A?.parts||INV;
+  const A=strengthHistory("appTbl"),parts=A?.parts||INV;
+  const definition=$("#appDefinition");if(definition)definition.textContent=`선택 기관 중 하나라도 해당 방향이면 하루 1회 · 당일 합산강도: ${strengthLabel("appTbl")} · 순매도는 부호 반전 · 빈칸은 강도 제한 없음 · 출현일수순`;
   const side=st.appSide||"buy",word=side==="buy"?"순매수":"순매도";
   $("#appTitle").textContent=`${word} 최다 출현`;
   $("#appDays").value=st.appDays;
@@ -1259,7 +1319,7 @@ function renderAppearances(){
   $("#appParts").innerHTML=parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.appSel[i]==="1"?"checked":""} style="width:auto"> ${esc(p)}</label>`).join("");
   const empty=m=>{$("#appMeta").textContent="";$("#appTbl").innerHTML=`<tr><td class="empty">${m}</td></tr>`};
   if(!A||!A.days[st.D.date])return empty("최다 출현 데이터가 없습니다. 다음 데이터 계산 후 표시됩니다.");
-  if(side==="sell"&&!A.days[st.D.date].sell_combos)return empty("순매도 최다 출현 데이터는 데이터 갱신(다시 계산) 후 표시됩니다.");
+  if(side==="sell"&&A.basis!=="volume"&&!A.days[st.D.date].sell_combos)return empty("순매도 최다 출현 데이터는 데이터 갱신(다시 계산) 후 표시됩니다.");
   if(!st.appSel.includes("1"))return empty("수급 주체를 하나 이상 선택하세요.");
   const R=appearanceCalc(A,st.D.date,st.appSel,st.appDays,side,st.appMin);
   if(R.missingStrength)return empty("합산강도 필터에 필요한 데이터가 없습니다. 데이터 갱신(다시 계산) 후 표시됩니다.");
@@ -1277,20 +1337,30 @@ function cumulativeCalc(A,date,sel,days,side="buy"){
   if(end<0)return {dates:[],rows:[],missing:false};
   const dates=A.dates.slice(Math.max(0,end-days+1),end+1),last=A.days[date];
   if(!last?.cap||dates.some(d=>!Array.isArray(A.days[d]?.flows)))return {dates,rows:[],missing:true};
+  const quantity=A.basis==="volume";
+  if(quantity&&dates.some(d=>!A.days[d]?.complete))return {dates,rows:[],missing:true};
   const selected=A.parts.map((_,i)=>i).filter(i=>sel[i]==="1"),sums=new Float64Array(A.T.length);
+  const cashSums=new Float64Array(A.T.length),volumes=new Float64Array(A.T.length);
+  if(quantity)for(const d of dates){
+    const cashRows=A.cash_offset?A.days[d].flows:A.days[d].cash_flows;
+    for(const row of cashRows||[])cashSums[row[0]]+=selected.reduce((sum,k)=>sum+(row[(A.cash_offset||1)+k]||0),0)/(A.cash_scale||10);
+    (A.days[d].volume||[]).forEach((v,i)=>{if(v>0)volumes[i]+=v});
+  }
   for(const d of dates)for(const [i,...flows] of A.days[d].flows)for(const k of selected)sums[i]+=flows[k]||0;
   const sign=side==="sell"?-1:1,scale=A.flow_scale||10,rows=[];
   for(let i=0;i<sums.length;i++){
-    const amt=sign*sums[i]/scale,cap=last.cap[i];
-    if(!(amt>0&&cap>0))continue;
+    const numerator=sign*sums[i]/scale,cap=last.cap[i],denominator=quantity?volumes[i]/100:cap;
+    if(!(numerator>0&&denominator>0))continue;
+    const amt=quantity?sign*cashSums[i]:numerator;
     const first=A.days[dates[0]].close[i],close=last.close[i];
-    rows.push({i,amt,cap,s:amt/cap,ret:first>0&&close>0?(close/first-1)*100:null});
+    rows.push({i,amt,cap,s:numerator/denominator,ret:first>0&&close>0?(close/first-1)*100:null});
   }
   rows.sort((a,b)=>b.s-a.s||A.T[a.i].localeCompare(A.T[b.i]));
   return {dates,rows,missing:false};
 }
 function renderCumulative(){
-  const A=window.KD_APP,parts=A?.parts||INV,side=st.cumSide||"buy",sell=side==="sell",word=sell?"순매도":"순매수";
+  const A=strengthHistory("cumTbl"),parts=A?.parts||INV,side=st.cumSide||"buy",sell=side==="sell",word=sell?"순매도":"순매수";
+  const definition=$("#cumDefinition");if(definition)definition.textContent=volumeMode("cumTbl")?"선택 기관의 기간 순매수 수량 합계 ÷ 같은 기간 거래량 합계 × 100 · 매도 상계 · 누적 금액은 백만원으로 표시":"선택 기관의 기간 순매수·순매도를 상계한 합계 ÷ 기준일 시가총액 × 100 · 누적강도순 · 전체 종목 기준";
   $("#cumTitle").textContent=`${word} 누적강도`;$("#cumDays").value=st.cumDays;
   $("#cumParts").innerHTML=parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.cumSel[i]==="1"?"checked":""} style="width:auto"> ${esc(p)}</label>`).join("");
   const empty=m=>{$("#cumMeta").textContent="";$("#cumTbl").innerHTML=`<tr><td class="empty">${m}</td></tr>`};
@@ -1311,13 +1381,15 @@ const stkCache={};
 let streakRenderJob=null;
 /* 연속 규칙: tol = 하루 순매도가 시총 대비 tol% 이내면 끊지 않음, gap = 그보다 큰 순매도일도 gap일까지 건너뜀 (둘 다 0 = 순매수 아닌 날 바로 끊김) */
 st.stkTol=+store.get("stkTol",0)||0;st.stkGap=+store.get("stkGap",0)||0;
-async function streakCombo(S,sel){
+async function streakCombo(S,sel,basis="cap"){
+  if(basis==="volume")S=window.KD_VOLUME?.[st.D.date]?.streaks;
+  if(!S)return null;
   const side=st.stkSide||"buy",saved=side==="sell"?S.sell:S;
   const plain=!st.stkTol&&!st.stkGap;
   if(plain&&saved?.combos[sel])return saved;
-  const key=`${st.D.date}|${side}|${sel}|${st.stkTol}|${st.stkGap}`;if(stkCache[key])return stkCache[key];
+  const key=`${st.D.date}|${side}|${sel}|${st.stkTol}|${st.stkGap}|${basis}`;if(stkCache[key])return stkCache[key];
   if(!location.protocol.startsWith("http"))return null;
-  try{const r=await fetch(`/api/streaks?date=${st.D.date}&sel=${sel}&tol=${st.stkTol}&gap=${st.stkGap}&side=${side}`);if(!r.ok)return null;return stkCache[key]=await r.json()}catch(e){return null}
+  try{const r=await fetch(`/api/streaks?date=${st.D.date}&sel=${sel}&tol=${st.stkTol}&gap=${st.stkGap}&side=${side}&basis=${basis}`);if(!r.ok)return null;return stkCache[key]=await r.json()}catch(e){return null}
 }
 function renderStreaks(){
   const S=st.D.streaks;
@@ -1329,25 +1401,27 @@ function renderStreaks(){
   $("#stkParts").innerHTML=S.parts.map((p,i)=>`<label class="num" style="cursor:pointer"><input type="checkbox" data-i="${i}" ${st.stkSel[i]==="1"?"checked":""} style="width:auto"> ${p}${S.missing.includes(p)?'<span class="sub">*</span>':""}</label>`).join("")+
     `<button class="ib" data-preset="${S.default}" style="padding:3px 8px">기본</button><button class="ib" data-preset="${"1".repeat(S.parts.length)}" style="padding:3px 8px">전체(기관합계)</button>`+
     `<span style="flex-basis:100%;height:0"></span>`+
-    `<label class="num" title="하루 ${opposite}가 시가총액 대비 이 % 이내면 연속이 끊기지 않은 것으로 봄 (0 = ${word}가 아니면 바로 끊김)">작은 ${opposite} 무시 <input type="number" id="stkTol" min="0" max="1" step="0.01" value="${st.stkTol}" inputmode="decimal">% 이내</label>`+
+    `<label class="num" title="하루 ${opposite}가 각 표에서 선택한 강도 기준으로 이 % 이내면 연속이 끊기지 않은 것으로 봄 (0 = ${word}가 아니면 바로 끊김)">작은 ${opposite} 무시 <input type="number" id="stkTol" min="0" max="1" step="0.01" value="${st.stkTol}" inputmode="decimal">% 이내</label>`+
     `<label class="num" title="그보다 큰 ${opposite}가 있는 날도 연속 중간에 이 일수까지는 건너뜀">${opposite}일 허용 <input type="number" id="stkGap" min="0" max="5" step="1" value="${st.stkGap}" inputmode="numeric">일</label>`+
     ((st.stkTol||st.stkGap)?`<button class="ib" id="stkRuleReset" style="padding:3px 8px">규칙 기본값(0·0)</button>`:"")+
     `<span class="sub">누적 금액·강도에는 중간의 ${opposite}도 그대로 빠짐 · 시작일은 항상 ${word}한 날</span>`+
     (S.missing.length?`<span class="sub" style="flex-basis:100%">* ${S.missing.join("·")} 수급은 아직 수집 전이라 이 날짜엔 0으로 계산됩니다 (데이터 갱신 후 반영)</span>`:"");
-  const sel=st.stkSel,date=st.D.date,rule=`${st.stkTol}|${st.stkGap}`;
+  const sel=st.stkSel,date=st.D.date,rule=`${st.stkTol}|${st.stkGap}`,basisE=volumeMode("stk_e")?"volume":"cap",basisC=volumeMode("stk_c")?"volume":"cap";
   $("#stkTitle").textContent=`연속 ${buy?"매수":"매도"} (${S.parts.filter((p,i)=>sel[i]==="1").join("+")})`;
   if(!(buy?S:S.sell)?.combos[sel]||st.stkTol||st.stkGap)$("#streaks").innerHTML='<div class="empty"><span class="spin"></span> 계산 중…</div>';
-  return streakRenderJob=streakCombo(S,sel).then(R=>{
-    if(st.D.date!==date||st.stkSel!==sel||(st.stkSide||"buy")!==side||`${st.stkTol}|${st.stkGap}`!==rule)return;  // 그 사이 날짜·체크·규칙·방향이 바뀜
+  const job=basisE===basisC?streakCombo(S,sel,basisE).then(R=>[R,R]):Promise.all([streakCombo(S,sel,basisE),streakCombo(S,sel,basisC)]);
+  return streakRenderJob=job.then(([E,C])=>{
+    const R=E||C;
+    if(st.D.date!==date||st.stkSel!==sel||(st.stkSide||"buy")!==side||`${st.stkTol}|${st.stkGap}`!==rule||volumeMode("stk_e")!==(basisE==="volume")||volumeMode("stk_c")!==(basisC==="volume"))return;
     if(!R){$("#streaks").innerHTML='<div class="empty">이 조합·규칙은 PC에서 open_dashboard.bat 으로 열었을 때 계산됩니다. (사모·연기금·투신으로 만든 조합과 전체 체크는, 규칙 0·0 이면 휴대폰에서도 바로 볼 수 있습니다)</div>';return}
-    const C=R.combos[sel],tk=R.tk,n=st.listN;
-    const tb=(title,rows,tagc,id)=>{rows=rows.slice(0,n);return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목명 모아보기</button></div></div><div class="scroll-y"><table id="${id}">
+    const n=st.listN;
+    const tb=(title,result,tagc,id,kind)=>{const rows=(result?.combos[sel]?.[kind]||[]).slice(0,n),tk=result?.tk||{};return `<div class="tw"><div class="sh" style="padding:10px 12px;margin:0"><div class="title-actions"><h3>${title} 상위${rows.length}</h3><button type="button" class="ib names-button" data-names-from="${id}">종목명 모아보기</button></div>${strengthCheckbox(id)}</div><div class="scroll-y"><table id="${id}">
       <tr><th class="c">순위</th><th class="l">종목</th><th class="l">연속<br><span class="sub">시작일</span></th><th>누적 ${word}<br><span class="sub">백만원 · 시총</span></th><th>누적<br>강도</th><th>시작일 종가 대비<br><span class="sub">피·닥 대비</span></th></tr>
       ${rows.map(([t,days,amt,s,d0,ret,skip],i)=>{const k=tk[t]||[t,null,null];return `<tr><td class="c mut">${i+1}</td><td class="l"><span class="nm">${stockLink(t,k[0])}</span><div class="code">${stockCodeLink(t,k[2],k[0])}</div></td>
       <td class="l" data-sort="${days}"><div class="stack l"><span class="chip ${days>=R.confirm?"c-ok":tagc}">${days}일</span><span class="sub">${d0?d0.slice(5):""}~${skip?` · ${opposite} ${skip}일 포함`:""}</span></div></td>
       <td><div class="stack"><span>${fN(amt)}</span><span class="sub">시총 ${fN(k[1])}억</span></div></td><td class="${buy?"up":"dn"}"><b>${fN(s,2)}</b></td>
       <td>${relCell(ret,d0,date)}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">해당 종목 없음</td></tr>'}</table></div></div>`};
-    $("#streaks").innerHTML=tb("1일 이상 연속 · 누적 강도순",C.run,"c-warn","stk_e")+tb(`${R.confirm}일 이상 연속 · 지속 확인`,C.conf,"c-ok","stk_c");
+    $("#streaks").innerHTML=tb("1일 이상 연속 · 누적 강도순",E,"c-warn","stk_e","run")+tb(`${R.confirm}일 이상 연속 · 지속 확인`,C,"c-ok","stk_c","conf");
     applySorts();
   });
 }
@@ -1365,7 +1439,7 @@ $("#stkParts").addEventListener("click",e=>{const b=e.target.closest("[data-pres
 /* ===== 추적 ===== */
 const SC={"신규":"c-acc","상승확인":"c-ok","이탈주의":"c-risk","매집진행":"c-up","재점화 후보":"c-warn","추적연장":"c-vio"};
 function renderTrack(){
-  const T=st.D.tracking;
+  const D=strengthData("trkTbl"),T=D.tracking;
   const mc={KS:0,KQ:0};T.forEach(r=>{if(r.m in mc)mc[r.m]++});
   $("#trkMeta").textContent=`${st.D.date}까지 확인된 매집 구간 · ${T.length}종목`+(T.some(r=>r.m)?` (코스피 ${mc.KS} · 코스닥 ${mc.KQ})`:"");
   const cnt={};T.forEach(r=>cnt[r.status]=(cnt[r.status]||0)+1);
@@ -1397,7 +1471,7 @@ $("#trkTbl").addEventListener("click",e=>{
   renderTrack();
 });
 function renderCmp(){
-  const T=st.D.tracking,pal=["--up","--down","--ok","--warn","--violet"];
+  const T=strengthData("trkTbl").tracking,pal=["--up","--down","--ok","--warn","--violet"];
   const sel=st.cmp.map(t=>T.find(r=>r.t===t)).filter(Boolean);
   $("#cmpChips").innerHTML=sel.length?sel.map((r,i)=>`<span class="chip" style="border-color:var(${pal[i]});color:var(${pal[i]})">${stockLink(r.t,r.n)} ${fP(r.chg,1)}<button class="x" data-t="${r.t}" aria-label="${esc(r.n)} 비교 해제">✕</button></span>`).join(""):'<span class="sub">추적 표의 종목명 외 영역을 눌러 추가하세요</span>';
   const n=Math.max(0,...sel.map(r=>r.px.length));
@@ -1454,7 +1528,7 @@ function relCell(r,d0,d1,dg=1){
 }
 const med=a=>{const s=a.slice().sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2};
 function renderBT(){
-  const E=window.KD_EV,t=st.D.date;
+  const D=strengthData("btRecent"),E=volumeMode("btRecent")?window.KD_QEV:window.KD_EV,t=D.date;
   if(!E){$("#btMeta").textContent="";$("#btSum").innerHTML='<tr><td class="empty">데이터 갱신(다시 계산) 후 나타납니다.</td></tr>';$("#btRecent").innerHTML="";return}
   const X=ser(),days=(X?X.S.d:st.dates).filter(d=>d<=t),maxN=days.length;
   const N=st.btN?Math.min(st.btN,maxN):maxN;$("#btN").max=maxN;$("#btN").value=N;
@@ -1470,7 +1544,7 @@ function renderBT(){
       const avg=v=>v.reduce((s,y)=>s+y,0)/v.length,pct=v=>Math.round(v.filter(y=>y>0).length/v.length*100);
       return `<tr><td class="l"><b>${h}거래일 후</b></td><td>${a.length}</td><td>${pc(avg(a))}</td><td>${pc(med(a))}</td><td><b>${pct(a)}%</b></td><td>${pc(avg(x))}</td><td>${pct(x)}%</td><td>${pc(Math.max(...a),1)}</td><td>${pc(Math.min(...a),1)}</td></tr>`}).join("")
     ||'<tr><td colspan="9" class="empty">이 기간에 보유기간을 채운 감지 사례가 없습니다.</td></tr>');
-  const tracked=new Set(st.D.tracking.map(r=>r.t)),now=st.D.ev_now||{},cfg=window.KD_CFG||{};
+  const tracked=new Set(D.tracking.map(r=>r.t)),now=D.ev_now||{},cfg=window.KD_CFG||{};
   const why=e=>{const p=[];
     if(e.top)p.push(`<span class="chip c-acc">동시 상위${cfg.detect_top||20}</span> 사${e.rank[0]}·연${e.rank[1]}·투${e.rank[2]}위`);
     if(e.strong)p.push(`<span class="chip c-up">강도</span> 3기관 모두 순매수 · 합산 ${fN(e.s3,2)}% ≥ ${cfg.detect_str||0.5}%`);
@@ -1572,7 +1646,7 @@ function sortTable(tb,col,dir){
   const parent=rows[0].parentNode;rows.forEach(r=>parent.appendChild(r));
   [...tb.rows[0].cells].forEach((th,i)=>{th.dataset.arrow=i===col?(dir>0?" ▲":" ▼"):""});
 }
-function applySorts(){Object.entries(sorts).forEach(([id,s])=>{const tb=document.getElementById(id);if(tb)sortTable(tb,s.col,s.dir)});scheduleTableRows()}
+function applySorts(){syncStrengthControls();Object.entries(sorts).forEach(([id,s])=>{const tb=document.getElementById(id);if(tb)sortTable(tb,s.col,s.dir)});scheduleTableRows()}
 document.addEventListener("click",e=>{
   const th=e.target.closest("th");if(!th)return;const tb=th.closest("table");if(!tb||!tb.id)return;
   const col=th.cellIndex,cur=sorts[tb.id];
