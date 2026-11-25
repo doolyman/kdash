@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     environment:
@@ -32,10 +33,18 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload encrypted dashboard
+        id: upload
         uses: actions/upload-pages-artifact@v4
         with:
           path: .
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Wait for uploaded artifact visibility
+        timeout-minutes: 2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+          PAGES_ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
+        run: python3 .github/scripts/wait_pages_artifact.py
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v5
